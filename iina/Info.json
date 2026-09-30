@@ -1,0 +1,16 @@
+{
+  "name": "Cueline",
+  "identifier": "net.bajortski.cueline",
+  "version": "0.1.0",
+  "description": "Transcript editor bridge: talks to cueline.nvim over a local WebSocket, reports playback and previews edited cues on the video.",
+  "author": {
+    "name": "Bajortski"
+  },
+  "entry": "src/main.js",
+  "globalEntry": "src/global.js",
+  "permissions": ["video-overlay"],
+  "preferencesPage": "pref.html",
+  "preferenceDefaults": {
+    "port": 10427
+  }
+}

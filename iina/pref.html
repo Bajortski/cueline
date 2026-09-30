@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        padding: 16px;
+        margin: 0;
+        font: 13px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      }
+      .help {
+        margin-top: 4px;
+        font-size: 11px;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <label>WebSocket port <input type="number" min="1024" max="65535" data-type="int" data-pref-key="port" /></label>
+    <p class="help">
+      cueline.nvim connects to ws://127.0.0.1:&lt;port&gt;. Must match <code>port</code> in the Neovim setup. Restart IINA
+      after changing it.
+    </p>
+  </body>
+</html>

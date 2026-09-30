@@ -1,0 +1,51 @@
+1
+00:00:00,500 --> 00:00:04,500
+Welcome back to the show
+(cue 1 second line)
+
+2
+00:00:05,500 --> 00:00:09,500
+Tonight we roll for initiative
+
+3
+00:00:10,500 --> 00:00:14,500
+The dungeon master clears his throat
+
+4
+00:00:15,500 --> 00:00:19,500
+A goblin appears behind the bar
+(cue 4 second line)
+
+5
+00:00:20,500 --> 00:00:24,500
+Somebody orders another drink
+
+6
+00:00:25,500 --> 00:00:29,500
+Roll a d20 for perception
+
+7
+00:00:30,500 --> 00:00:34,500
+That is a natural one
+(cue 7 second line)
+
+8
+00:00:35,500 --> 00:00:39,500
+The crowd goes absolutely wild
+
+9
+00:00:40,500 --> 00:00:44,500
+We take a short rest here
+
+10
+00:00:45,500 --> 00:00:49,500
+The dragon was never real
+(cue 10 second line)
+
+11
+00:00:50,500 --> 00:00:54,500
+Credits roll over the chaos
+
+12
+00:00:55,500 --> 00:00:59,500
+Goodnight everybody

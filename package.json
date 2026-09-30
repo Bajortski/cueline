@@ -1,0 +1,13 @@
+{
+  "name": "cueline",
+  "private": true,
+  "description": "Dev tooling for cueline (lint + tests). The plugins themselves have no dependencies.",
+  "scripts": {
+    "lint": "eslint iina test/js",
+    "test": "node --test test/js/*.test.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
+  }
+}

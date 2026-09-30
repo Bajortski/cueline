@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+      #cap {
+        position: absolute;
+        left: 50%;
+        bottom: 7%;
+        transform: translateX(-50%);
+        box-sizing: border-box;
+        max-width: 88%;
+        width: max-content;
+        padding: 0.28em 0.7em 0.34em;
+        border-radius: 0.35em;
+        background: rgba(0, 0, 0, 0.66);
+        color: #fff;
+        font: 600 clamp(15px, 3.6vw, 48px) / 1.3 -apple-system, "Helvetica Neue", sans-serif;
+        text-align: center;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="cap"></div>
+    <script>
+      const cap = document.getElementById("cap");
+      function setCue(d) {
+        const text = decodeURIComponent((d && d.t) || "");
+        cap.textContent = text;
+        cap.style.display = text ? "block" : "none";
+        // echo back what is actually in the DOM, so the plugin can confirm it
+        iina.postMessage("shown", { t: encodeURIComponent(cap.style.display === "none" ? "" : cap.textContent) });
+      }
+      if (window.iina) {
+        iina.onMessage("cue", setCue);
+      }
+      window.setCue = setCue;
+    </script>
+  </body>
+</html>

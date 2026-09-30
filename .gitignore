@@ -1,0 +1,4 @@
+node_modules/
+test/fixtures/*.m4a
+test/fixtures/*.mp4
+.DS_Store
