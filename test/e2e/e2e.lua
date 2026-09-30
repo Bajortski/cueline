@@ -2,8 +2,8 @@
 -- plugin. Launched by test/e2e/run.sh, which starts and stops IINA.
 -- Usage: nvim --headless --clean -l test/e2e/e2e.lua <srt> <media-basename>
 local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h:h")
-vim.opt.rtp:prepend(root .. "/nvim")
-package.path = root .. "/nvim/tests/?.lua;" .. package.path
+vim.opt.rtp:prepend(root)
+package.path = root .. "/test/nvim/?.lua;" .. package.path
 vim.cmd("runtime plugin/cueline.lua")
 
 local H = require("helpers")

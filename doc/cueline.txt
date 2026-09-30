@@ -1,0 +1,245 @@
+*cueline.txt*  Edit .srt transcripts against a live IINA player
+
+==============================================================================
+CONTENTS                                                    *cueline-contents*
+
+  1. Introduction ............................ |cueline-intro|
+  2. Setup ................................... |cueline-setup|
+  3. Usage ................................... |cueline-usage|
+  4. Commands ................................ |cueline-commands|
+  5. Keys .................................... |cueline-keys|
+  6. Options ................................. |cueline-options|
+  7. Highlights .............................. |cueline-highlights|
+  8. Lua API ................................. |cueline-api|
+  9. Troubleshooting ......................... |cueline-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                                *cueline-intro*
+
+cueline links an `.srt` buffer to the IINA media player on macOS. The line
+being spoken is highlighted and kept in view as playback moves, and IINA shows
+it as a caption over the video, including edits you haven't saved yet.
+
+It needs the companion IINA plugin, installed from IINA → Settings → Plugins →
+Install from GitHub… with `Bajortski/cueline`. Restart IINA after installing.
+
+==============================================================================
+2. SETUP                                                       *cueline-setup*
+
+With lazy.nvim: >lua
+    {
+      "Bajortski/cueline",
+      ft = "srt",
+      cmd = { "CuelineConnect", "CuelineOpen" },
+      opts = {},
+    }
+<
+Otherwise: >lua
+    require("cueline").setup({})
+<
+Run |:checkhealth| `cueline` to check the setup.
+
+==============================================================================
+3. USAGE                                                       *cueline-usage*
+
+1. Open an `.srt` file. cueline turns on for it automatically.
+2. Run |:CuelineOpen| to open the matching media in IINA and connect, or open
+   the media in IINA yourself and run |:CuelineConnect|.
+3. Play. The playing line is highlighted and kept centred.
+4. Edit. The caption in IINA follows every keystroke.
+
+Following pauses for |cueline-follow_idle_ms| after you move the cursor or
+type, and never happens in insert mode. While paused, moving the cursor
+previews the line under it in the player.
+
+IINA opens audio-only files in music mode, which hides the caption. Use
+Video → Exit Music Mode in IINA. Everything else works regardless.
+
+==============================================================================
+4. COMMANDS                                                 *cueline-commands*
+
+:CuelineOpen [path]                                             *:CuelineOpen*
+    Open the media for the current transcript in IINA, and connect. Without
+    [path], looks for a file with the same name and a known media extension
+    in each of |cueline-media_dirs|, relative to the transcript.
+
+:CuelineConnect [port]                                       *:CuelineConnect*
+    Connect to IINA, retrying until it's available (see |cueline-reconnect|).
+
+:CuelineDisconnect                                        *:CuelineDisconnect*
+    Disconnect and stop retrying.
+
+:CuelineSeek                                                    *:CuelineSeek*
+    Jump the player to the start of the line under the cursor.
+
+:CuelineReplay                                                *:CuelineReplay*
+    Like |:CuelineSeek|, and start playing.
+
+:CuelinePause                                                  *:CuelinePause*
+    Toggle play/pause.
+
+:CuelineNudge [secs]                                          *:CuelineNudge*
+    Skip forward by [secs], or back if negative. Defaults to
+    |cueline-nudge|.
+
+:CuelineSpeed {x}                                              *:CuelineSpeed*
+    Set the playback speed.
+
+:CuelineFollow [on|off]                                       *:CuelineFollow*
+    Turn following on or off. Without an argument, toggle it.
+
+:CuelineAdjust {start|end} {secs}                             *:CuelineAdjust*
+    Shift the start or end time of the line under the cursor by {secs}.
+
+:CuelineStamp {start|end}                                      *:CuelineStamp*
+    Set the start or end time of the line under the cursor to the current
+    playback position.
+
+:CuelineAttach                                                *:CuelineAttach*
+:CuelineDetach                                                *:CuelineDetach*
+    Turn cueline on or off for the current buffer.
+
+:CuelineStatus                                                *:CuelineStatus*
+    Show the connection and player state.
+
+==============================================================================
+5. KEYS                                                         *cueline-keys*
+
+Set in `.srt` buffers only, in normal mode.
+
+    <CR>               Jump the player to the line under the cursor
+    <localleader>r     Play the line under the cursor from its start
+    <localleader>p     Play / pause
+    <localleader>f     Turn following on or off
+    <localleader>h     Skip back |cueline-nudge| seconds
+    <localleader>l     Skip forward |cueline-nudge| seconds
+    <localleader>[     Move the line's start earlier by |cueline-adjust|
+    <localleader>]     Move the line's start later
+    <localleader>{     Move the line's end earlier
+    <localleader>}     Move the line's end later
+    <localleader>S     Set the line's start to the playback position
+    <localleader>E     Set the line's end to the playback position
+
+Change them with |cueline-keymaps|.
+
+==============================================================================
+6. OPTIONS                                                   *cueline-options*
+
+Pass these to `setup()`. Defaults are shown.
+
+                                                                *cueline-host*
+host = "127.0.0.1"
+    Where IINA is running.
+
+                                                                *cueline-port*
+port = 10427
+    Must match the port in IINA → Settings → Plugins → cueline.
+
+                                                           *cueline-reconnect*
+reconnect = true
+    Keep retrying after |:CuelineConnect| until IINA answers, and reconnect if
+    the connection drops.
+
+                                                         *cueline-auto_attach*
+auto_attach = true
+    Turn cueline on for every buffer with filetype `srt`.
+
+                                                        *cueline-auto_connect*
+auto_connect = false
+    Connect as soon as the first `.srt` buffer is opened.
+
+                                                              *cueline-follow*
+follow = true
+    Move the cursor along with playback.
+
+                                                      *cueline-follow_idle_ms*
+follow_idle_ms = 2500
+    Don't follow within this many milliseconds of your own cursor movement
+    or edits.
+
+                                                       *cueline-follow_center*
+follow_center = true
+    Keep the playing line centred in the window. When false, the view only
+    scrolls once the playing line goes off-screen.
+
+                                                   *cueline-preview_on_cursor*
+preview_on_cursor = true
+    While paused, show the line under the cursor as the caption.
+
+                                                           *cueline-hide_subs*
+hide_subs = true
+    Hide IINA's own subtitle track while cueline's caption is showing.
+
+                                                           *cueline-lookahead*
+lookahead = 3
+    How many upcoming lines to send ahead, so the caption changes on time.
+
+                                                               *cueline-nudge*
+nudge = 2
+    Seconds skipped by the nudge keys and |:CuelineNudge|.
+
+                                                              *cueline-adjust*
+adjust = 0.1
+    Seconds moved by the timing keys.
+
+                                                      *cueline-seek_on_adjust*
+seek_on_adjust = true
+    After moving a line's start, jump the player there so you can hear it.
+
+                                                          *cueline-media_exts*
+media_exts = { "m4a", "mp3", "wav", "flac", "ogg", "opus", "aac",
+               "mp4", "mkv", "mov", "webm", "m4v" }
+    Extensions |:CuelineOpen| looks for.
+
+                                                          *cueline-media_dirs*
+media_dirs = { ".", "../audio", "../video", "../media" }
+    Folders |:CuelineOpen| searches, relative to the transcript.
+
+                                                             *cueline-keymaps*
+keymaps = { seek = "<CR>", replay = "<localleader>r", ... }
+    Keys by action name: `seek`, `replay`, `toggle_pause`, `follow`, `back`,
+    `forward`, `start_earlier`, `start_later`, `end_earlier`, `end_later`,
+    `stamp_start`, `stamp_end`. Set one to `false` to disable it, or set
+    `keymaps = false` to disable them all.
+
+==============================================================================
+7. HIGHLIGHTS                                             *cueline-highlights*
+
+CuelineActive                                          *hl-CuelineActive*
+    The playing line. Links to |hl-DiffChange| by default.
+
+CuelineSign                                              *hl-CuelineSign*
+    The `▶` sign next to the playing line. Links to `DiagnosticInfo` by
+    default.
+
+==============================================================================
+8. LUA API                                                       *cueline-api*
+
+require("cueline").setup({opts})                             *cueline.setup()*
+    Apply options. See |cueline-options|.
+
+require("cueline").statusline()                         *cueline.statusline()*
+    Returns the playback position for a statusline, e.g. `▶ 01:02:03`
+    (`⏸` when paused). While connecting it returns `cue:…`, and when not
+    connected an empty string.
+
+The WebSocket protocol between the two plugins is documented in
+`docs/protocol.md` in the repository.
+
+==============================================================================
+9. TROUBLESHOOTING                                   *cueline-troubleshooting*
+
+|:CuelineConnect| keeps retrying ~
+    IINA isn't running, or was already running when the plugin was installed.
+    Restart IINA, and check the plugin is enabled and the ports match.
+
+No caption in IINA ~
+    IINA is in music mode. Use Video → Exit Music Mode.
+
+|:CuelineOpen| can't find the media ~
+    Pass the path, or add your folder to |cueline-media_dirs|.
+
+The cursor doesn't follow ~
+    See |cueline-follow_idle_ms|, and check |:CuelineStatus|.
+
+ vim:tw=78:ts=8:ft=help:norl:
