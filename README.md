@@ -107,6 +107,7 @@ disables all.
   auto_connect = false,    -- connect when the first SRT opens
   follow = true,           -- cursor follows playback
   follow_idle_ms = 2500,   -- ...but not this soon after your own moves/edits
+  follow_center = true,    -- keep the playing cue centred (false: scroll only at the edge)
   preview_on_cursor = true,-- while paused, preview the cue under the cursor
   hide_subs = true,        -- hide IINA's own subtitle track while previewing
   lookahead = 3,           -- cues sent ahead so the caption switches on time

@@ -16,6 +16,7 @@ local defaults = {
   auto_connect = false, -- connect when the first SRT buffer attaches
   follow = true, -- move the cursor along with playback
   follow_idle_ms = 2500, -- ...but not within this long of your own cursor moves/edits
+  follow_center = true, -- keep the playing cue centred (false: scroll only when it leaves the window)
   preview_on_cursor = true, -- while paused, preview the cue under the cursor
   hide_subs = true, -- hide IINA's own subtitle track while previewing
   lookahead = 3, -- cues sent ahead of playback so the player switches on time
@@ -147,7 +148,7 @@ local function follow_cursor(buf, cue)
   api.nvim_win_call(win, function()
     local top, bot = fn.line("w0"), fn.line("w$")
     api.nvim_win_set_cursor(win, { row, 0 })
-    if row < top or row > bot then
+    if M.config.follow_center or row < top or row > bot then
       vim.cmd("normal! zz")
     end
   end)
