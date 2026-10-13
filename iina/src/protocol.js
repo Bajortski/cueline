@@ -16,6 +16,7 @@ const PLAYER_COMMANDS = new Set([
   "clear",
   "config",
   "open",
+  "track",
 ]);
 
 function parse(text) {
@@ -235,6 +236,24 @@ function markup(text) {
   return { spans: out.spans, align: out.align || 2 };
 }
 
+// --- live subtitle track ----------------------------------------------------
+
+function baseName(path) {
+  return String(path).slice(String(path).lastIndexOf("/") + 1);
+}
+
+// Id of the external subtitle track loaded from `path` in mpv's track-list,
+// or null. Matched by file name too, since mpv may hold the path in another
+// spelling (macOS's /var is /private/var).
+function findSubTrack(list, path) {
+  const base = baseName(path);
+  const hit = (Array.isArray(list) ? list : []).find((t) => {
+    const f = t && t.type === "sub" && t["external-filename"];
+    return f && (f === path || baseName(f) === base);
+  });
+  return hit ? hit.id : null;
+}
+
 function hello(player) {
   return { type: "hello", server: "cueline-iina", version: VERSION, player: player || null };
 }
@@ -252,4 +271,5 @@ module.exports = {
   isLoopback,
   hello,
   markup,
+  findSubTrack,
 };

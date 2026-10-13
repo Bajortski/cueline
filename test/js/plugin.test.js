@@ -9,8 +9,46 @@ const P = require("../../iina/src/protocol.js");
 
 const SRC = path.join(__dirname, "../../iina/src");
 
+function addSubTrack(w, file) {
+  const id = w.nextId++;
+  w.tracks.push({ id, type: "sub", "external-filename": file });
+  return id;
+}
+
+function removeSubTrack(w, id) {
+  const i = w.tracks.findIndex((t) => String(t.id) === String(id));
+  return i < 0 ? null : w.tracks.splice(i, 1)[0];
+}
+
+// What mpv does for the track commands main.js uses. sub-reload removes and
+// re-adds the track, so it comes back with a new id (selection survives).
+const MPV_SIM = {
+  "sub-add": (w, file, flag) => {
+    const id = addSubTrack(w, file);
+    if (flag === "select") {
+      w.props.sid = String(id);
+    }
+  },
+  "sub-reload": (w, id) => {
+    const old = removeSubTrack(w, id);
+    const fresh = old && addSubTrack(w, old["external-filename"]);
+    if (fresh && w.props.sid === String(id)) {
+      w.props.sid = String(fresh);
+    }
+  },
+  "sub-remove": (w, id) => {
+    if (removeSubTrack(w, id) && w.props.sid === String(id)) {
+      w.props.sid = "no";
+    }
+  },
+};
+
 function makeWorld() {
-  const w = { delayed: [], sent: [], mpvCmds: [], overlay: [], markup: [], props: { "sub-visibility": true }, intervals: [], queue: [] };
+  const w = { delayed: [], sent: [], mpvCmds: [], overlay: [], markup: [], intervals: [], queue: [] };
+  w.props = { "sub-visibility": true, sid: "1", "sub-text": "" };
+  // mpv's track list, starting with a subtitle track of the user's own
+  w.tracks = [{ id: 1, type: "sub", "external-filename": "/movies/own.srt" }];
+  w.nextId = 2;
   const childListeners = {};
   const globalListeners = {};
   const wsHandlers = {};
@@ -58,11 +96,17 @@ function makeWorld() {
       open: (p) => w.mpvCmds.push(["open", p]),
     },
     mpv: {
-      getString: () => "/tmp/a b.mp4",
+      getString: (k) => (k === "path" ? "/tmp/a b.mp4" : w.props[k]),
+      getNative: (k) => (k === "track-list" ? w.tracks.map((t) => Object.assign({}, t)) : undefined),
       getFlag: (k) => w.props[k],
       getNumber: (k) => (k === "time-pos" ? w.status.position : 0),
       set: (k, v) => (w.props[k] = v),
-      command: (name, args) => w.mpvCmds.push([name, ...args]),
+      command: (name, args) => {
+        w.mpvCmds.push([name, ...args]);
+        if (MPV_SIM[name]) {
+          MPV_SIM[name](w, ...args);
+        }
+      },
     },
     event: { on: (name, cb) => (events[name] = cb) },
     overlay: {
@@ -107,6 +151,10 @@ function makeWorld() {
   };
   w.fromClient = (msg, conn = "c1") => {
     wsHandlers.msg(conn, { text: () => JSON.stringify(msg) });
+    w.flush();
+  };
+  w.disconnect = (conn = "c1") => {
+    wsHandlers.connState(conn, "cancelled");
     w.flush();
   };
   w.lastSent = (type) => [...w.sent].reverse().find(([, m]) => m.type === type);
@@ -205,4 +253,98 @@ test("music mode produces a notice for clients", () => {
   w.events["iina.music-mode.changed"](true);
   w.connect();
   assert.match(w.lastSent("notice")[1].message, /music mode/);
+});
+
+test("findSubTrack matches by path or file name", () => {
+  const list = [
+    { id: 1, type: "video" },
+    { id: 2, type: "sub", "external-filename": "/movies/own.srt" },
+    { id: 4, type: "sub", "external-filename": "/private/var/T/0-cueline.ass" },
+  ];
+  assert.strictEqual(P.findSubTrack(list, "/movies/own.srt"), 2);
+  assert.strictEqual(P.findSubTrack(list, "/var/T/0-cueline.ass"), 4);
+  assert.strictEqual(P.findSubTrack(list, "/var/T/other.ass"), null);
+  assert.strictEqual(P.findSubTrack(undefined, "/x"), null);
+});
+
+const LIVE = "/var/T/0-cueline.ass";
+
+function liveWorld() {
+  const w = makeWorld();
+  w.props["sub-visibility"] = false; // the user had subtitles switched off
+  w.connect();
+  w.fromClient({ type: "track", path: LIVE });
+  return w;
+}
+
+test("track loads the file as a selected, visible subtitle track", () => {
+  const w = liveWorld();
+  assert.deepStrictEqual(w.mpvCmds.at(-1), ["sub-add", LIVE, "select", "cueline-live"]);
+  assert.strictEqual(w.props.sid, "2");
+  assert.strictEqual(w.props["sub-visibility"], true, "forced visible while live");
+  const [, rep] = w.lastSent("track");
+  assert.deepStrictEqual([rep.path, rep.id, rep.sid, rep.prev_sid], [LIVE, 2, "2", "1"]);
+});
+
+test("track for the same path reloads by the track's current id", () => {
+  const w = liveWorld();
+  w.fromClient({ type: "track", path: LIVE });
+  assert.deepStrictEqual(w.mpvCmds.at(-1), ["sub-reload", "2"]);
+  w.flush();
+  assert.strictEqual(w.lastSent("track")[1].id, 3, "id changed on reload");
+  w.fromClient({ type: "track", path: LIVE });
+  assert.deepStrictEqual(w.mpvCmds.at(-1), ["sub-reload", "3"], "new id looked up, not cached");
+  assert.strictEqual(w.props.sid, "4", "still selected");
+  assert.strictEqual(w.mpvCmds.filter((c) => c[0] === "sub-add").length, 1);
+});
+
+test("sub-text changes are reported while live", () => {
+  const w = liveWorld();
+  w.props["sub-text"] = "Tonight we roll";
+  w.status.position = 6;
+  w.tick();
+  w.fireDelayed();
+  assert.strictEqual(w.lastSent("track")[1].text, "Tonight we roll");
+  const n = w.sent.length;
+  w.status.position = 6.1;
+  w.tick();
+  w.fireDelayed();
+  const reports = (sent) => sent.filter(([, m]) => m.type === "track").length;
+  assert.strictEqual(reports(w.sent), reports(w.sent.slice(0, n)), "unchanged text not re-sent");
+});
+
+test("the overlay stays empty and subs stay visible while live", () => {
+  const w = liveWorld();
+  w.status.position = 5;
+  w.tick();
+  w.fromClient({ type: "cues", items: [{ start: 4, end: 6, text: "plain" }] });
+  w.fromClient({ type: "cue", start: 4, end: 6, text: "sticky", sticky: true });
+  assert.ok(!w.overlay.includes("plain") && !w.overlay.includes("sticky"));
+  assert.strictEqual(w.props["sub-visibility"], true);
+});
+
+test("track null removes our track and restores the user's sid and visibility", () => {
+  const w = liveWorld();
+  w.fromClient({ type: "track", path: LIVE }); // id 2 -> 3
+  w.fromClient({ type: "track", path: null });
+  assert.deepStrictEqual(w.mpvCmds.at(-1), ["sub-remove", "3"]);
+  assert.strictEqual(w.props.sid, "1");
+  assert.strictEqual(w.props["sub-visibility"], false);
+  assert.deepStrictEqual(w.tracks.map((t) => t.id), [1]);
+  const [, rep] = w.lastSent("track");
+  assert.deepStrictEqual([rep.path, rep.id, rep.sid], [null, null, "1"]);
+  w.status.position = 5;
+  w.tick();
+  w.fromClient({ type: "cues", items: [{ start: 4, end: 6, text: "srt again" }] });
+  assert.strictEqual(w.overlay.at(-1), "srt again", "overlay back for SRT buffers");
+});
+
+test("a different path replaces the track; disconnect drops it", () => {
+  const w = liveWorld();
+  w.fromClient({ type: "track", path: "/var/T/1-cueline.ass" });
+  assert.deepStrictEqual(w.tracks.map((t) => t["external-filename"]), ["/movies/own.srt", "/var/T/1-cueline.ass"]);
+  assert.strictEqual(w.lastSent("track")[1].prev_sid, "1", "the user's sid, not ours");
+  w.disconnect();
+  assert.deepStrictEqual(w.tracks.map((t) => t.id), [1]);
+  assert.strictEqual(w.props.sid, "1");
 });

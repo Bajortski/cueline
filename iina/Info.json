@@ -8,7 +8,7 @@
   },
   "entry": "src/main.js",
   "globalEntry": "src/global.js",
-  "permissions": ["video-overlay"],
+  "permissions": ["video-overlay", "file-system"],
   "preferencesPage": "pref.html",
   "preferenceDefaults": {
     "port": 10427

@@ -22,7 +22,8 @@ that speaks WebSocket can use it: a script, another editor, a remote control.
 | `speed` | `speed` | Playback speed |
 | `cues` | `items: [{id, start, end, text}]` | The playing line and the next few; the player shows whichever one contains the current position |
 | `cue` | `id`, `start`, `end`, `text`, `sticky` | Show this one line regardless of position (used for previewing while paused) |
-| `clear` | none | Remove the caption and restore IINA's subtitles |
+| `clear` | none | Remove the caption and any live track, and restore IINA's subtitles |
+| `track` | `path` | Load the subtitle file at `path` as a live track rendered by mpv (libass), select it and keep subtitles visible; sending the same `path` again reloads it from disk. `path: null` removes it and reselects the subtitle track and visibility the user had before. While a live track is loaded the HTML caption stays empty |
 | `open` | `path` | Open a file in the active player window |
 | `ping` | `id?` | IINA replies with `pong` |
 
@@ -35,6 +36,7 @@ that speaks WebSocket can use it: a script, another editor, a remote control.
 | `state` | `pos`, `paused`, `speed` | Paused or resumed; sent immediately |
 | `file` | `file`, `duration`, `pos`, `paused`, `speed` | A file was loaded, or a different window became active |
 | `shown` | `text`, `rendered`, `subs_hidden` | The caption now on screen reads `text` (the cue's source, formatting tags included); `rendered` is its visible text with tags applied |
+| `track` | `path`, `id`, `sid`, `prev_sid`, `text`, `sub_visibility` | State of the live track: sent after it's loaded, reloaded or removed (`path` and `id` null), and whenever mpv's `sub-text` changes. `id` is its current mpv track id (it can change on reload), `sid` the selected subtitle track, `prev_sid` the user's track to restore, `text` mpv's `sub-text` (the plain text libass is showing) |
 | `notice` | `message` | Something worth telling the user, e.g. music mode is hiding the caption |
 | `error` | `message` | A malformed message, or no player window is open |
 | `pong` | `id` | Reply to `ping` |
@@ -56,6 +58,18 @@ $ websocat ws://127.0.0.1:10427/
   `speed` while not `paused`. The Neovim plugin does this.
 - Sending the next few lines in `cues` lets the player switch captions exactly
   on time, without waiting for a round trip to the client.
+
+## Live tracks (ASS)
+
+The Neovim plugin previews `.ass`/`.ssa` buffers this way: it writes the whole
+buffer, unsaved edits included, to a temp file (write then rename, so mpv
+never reads half a file) and sends `track` with its path, then again ~150 ms
+after each burst of edits. IINA runs `sub-add` the first time and `sub-reload`
+after that; mpv drops and re-adds the track on reload, so the plugin finds it
+by file name in `track-list` every time rather than keeping its id. The temp
+file is deleted on detach, disconnect and exit. Loading a file needs the
+plugin's `file-system` permission: IINA only lets plugins without it run
+mpv commands it considers safe, and `sub-add` isn't one.
 
 ## Architecture
 

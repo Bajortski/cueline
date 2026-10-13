@@ -113,6 +113,11 @@ const playerEvents = {
       broadcast({ type: "shown", text: msg.text, rendered: msg.rendered, subs_hidden: msg.subs_hidden });
     }
   },
+  track: (msg, label) => {
+    if (label === active) {
+      broadcast(Object.assign({}, msg, { type: "track" }));
+    }
+  },
   notice: (msg, label) => {
     if (label === active) {
       broadcast({ type: "notice", message: msg.message });

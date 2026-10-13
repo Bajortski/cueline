@@ -19,6 +19,8 @@ const S = {
   anchor: { pos: 0, at: 0, paused: true, speed: 1 },
   boundaryTimer: null,
   musicMode: false,
+  live: null, // { path, prevSid, prevVis, text } while a libass track is loaded
+  watchTimer: null,
 };
 
 function post(msg) {
@@ -76,7 +78,8 @@ function showText(text) {
 }
 
 function render(pos) {
-  const text = P.pickText(S.render, pos);
+  // a live libass track renders the buffer itself; the overlay stays empty
+  const text = S.live ? null : P.pickText(S.render, pos);
   if (text !== S.shown && showText(text)) {
     S.shown = text;
   }
@@ -140,6 +143,114 @@ event.on("iina.plugin-overlay-loaded", () => {
   log.log("overlay ready");
 });
 
+// --- live libass track -------------------------------------------------------
+// For ASS buffers Neovim writes the whole buffer to a temp file and sends its
+// path; mpv renders that with libass, animations included. sub-reload removes
+// and re-adds the track, so its id can change: it's always looked up by file
+// name, never cached.
+
+const LOAD_TRIES = 40; // x 50 ms waiting for a loaded track to appear
+const WATCH_MS = 100; // sub-text poll after a change
+
+function liveId() {
+  return S.live ? P.findSubTrack(mpv.getNative("track-list"), S.live.path) : null;
+}
+
+function reportLive() {
+  const live = S.live || { path: null, prevSid: null };
+  live.text = mpv.getString("sub-text") || "";
+  post({
+    type: "track",
+    path: live.path,
+    id: liveId(),
+    sid: mpv.getString("sid"),
+    prev_sid: live.prevSid,
+    text: live.text,
+    sub_visibility: mpv.getFlag("sub-visibility"),
+  });
+}
+
+function selectLive(tries) {
+  const id = liveId();
+  if (id !== null) {
+    mpv.set("sid", String(id));
+    reportLive();
+  } else if (S.live && tries > 0) {
+    setTimeout(() => selectLive(tries - 1), 50);
+  } else if (S.live) {
+    log.warn(`live track did not load: ${S.live.path}`);
+    reportLive();
+  }
+}
+
+// sub-add isn't one of the mpv commands IINA allows without the "file-system"
+// permission; core.subtitle.loadTrack needs it as well.
+function loadLive(path) {
+  mpv.command("sub-add", [path, "select", "cueline-live"]);
+  selectLive(LOAD_TRIES);
+}
+
+function startLive(path) {
+  dropLive();
+  restoreSubs(); // undo the overlay's hiding before saving the user's state
+  S.live = { path, prevSid: mpv.getString("sid"), prevVis: mpv.getFlag("sub-visibility") };
+  mpv.set("sub-visibility", true);
+  renderNow();
+  loadLive(path);
+}
+
+function reloadLive() {
+  const id = liveId();
+  if (id === null) {
+    loadLive(S.live.path);
+    return;
+  }
+  mpv.command("sub-reload", [String(id)]);
+  setTimeout(reportLive, 0);
+  scheduleWatch();
+}
+
+function dropLive() {
+  const live = S.live;
+  if (!live) {
+    return;
+  }
+  const id = liveId();
+  S.live = null;
+  if (id !== null) {
+    mpv.command("sub-remove", [String(id)]);
+  }
+  mpv.set("sid", live.prevSid || "no");
+  mpv.set("sub-visibility", live.prevVis !== false);
+  reportLive();
+}
+
+function setLive(path) {
+  if (!path) {
+    dropLive();
+  } else if (S.live && S.live.path === path) {
+    reloadLive();
+  } else {
+    startLive(path);
+  }
+}
+
+// mpv's sub-text (the plain text libass is showing) is reported whenever it
+// changes. IINA delivered mpv.sub-text.changed only once in testing, so it's
+// polled on a short timer after position changes and reloads instead.
+function watchLive() {
+  S.watchTimer = null;
+  if (S.live && S.clients > 0 && (mpv.getString("sub-text") || "") !== S.live.text) {
+    reportLive();
+  }
+}
+
+function scheduleWatch() {
+  if (S.live && !S.watchTimer) {
+    S.watchTimer = setTimeout(watchLive, WATCH_MS);
+  }
+}
+
 // --- playback reporting ----------------------------------------------------
 
 function postTime(pb) {
@@ -189,6 +300,7 @@ function onTimePos() {
   setAnchor(pb);
   renderNow();
   reportTime(pb);
+  scheduleWatch();
 }
 
 // The overlay lives on the video view, which music mode hides.
@@ -257,6 +369,7 @@ const commands = {
   },
   clear: () => {
     S.render = { sticky: null, items: [] };
+    dropLive();
     renderNow();
     restoreSubs();
   },
@@ -267,6 +380,7 @@ const commands = {
     }
   },
   open: (m) => core.open(m.path),
+  track: (m) => setLive(typeof m.path === "string" ? m.path : null),
 };
 
 // Handled on a fresh tick: messages this entry posts back to the global
@@ -279,6 +393,12 @@ global.onMessage("cueline:clients", (n) => setTimeout(() => setClients(Number(n)
 
 event.on("iina.file-loaded", () => {
   S.render = { sticky: null, items: [] };
+  // mpv drops external tracks with the old file; Neovim re-sends the path
+  // when it hears about the new one
+  if (S.live) {
+    mpv.set("sub-visibility", S.live.prevVis);
+    S.live = null;
+  }
   post(Object.assign({ type: "file" }, snapshot()));
 });
 
@@ -300,6 +420,7 @@ event.on("mpv.pause.changed", () => {
 });
 
 event.on("iina.window-will-close", () => {
+  dropLive();
   restoreSubs();
   post({ type: "closed" });
 });
