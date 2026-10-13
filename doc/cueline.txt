@@ -52,6 +52,11 @@ Following pauses for |cueline-follow_idle_ms| after you move the cursor or
 type, and never happens in insert mode. While paused, moving the cursor
 previews the line under it in the player.
 
+The caption renders SRT formatting tags: `<b>`, `<i>`, `<u>`, `<s>` and
+`<font color="...">`. An ASS `{\anN}` tag moves it, e.g. `{\an8}` to the top
+centre; other `{\...}` blocks are hidden. Anything else in angle brackets is
+shown as written.
+
 IINA opens audio-only files in music mode, which hides the caption. Use
 Video → Exit Music Mode in IINA. Everything else works regardless.
 

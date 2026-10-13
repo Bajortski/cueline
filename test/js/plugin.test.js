@@ -10,7 +10,7 @@ const P = require("../../iina/src/protocol.js");
 const SRC = path.join(__dirname, "../../iina/src");
 
 function makeWorld() {
-  const w = { delayed: [], sent: [], mpvCmds: [], overlay: [], props: { "sub-visibility": true }, intervals: [], queue: [] };
+  const w = { delayed: [], sent: [], mpvCmds: [], overlay: [], markup: [], props: { "sub-visibility": true }, intervals: [], queue: [] };
   const childListeners = {};
   const globalListeners = {};
   const wsHandlers = {};
@@ -71,6 +71,7 @@ function makeWorld() {
       postMessage: (name, data) => {
         const text = decodeURIComponent(data.t);
         w.overlay.push(text);
+        w.markup.push(JSON.parse(decodeURIComponent(data.m)));
         w.overlayListener({ t: encodeURIComponent(text) });
       },
       setClickable: () => {},
@@ -191,6 +192,9 @@ test("cue rendering, sub hiding and restore", () => {
   assert.strictEqual(w.overlay.at(-1), "", "hidden outside the cue");
   w.fromClient({ type: "cue", start: 1, end: 2, text: "sticky", sticky: true });
   assert.strictEqual(w.overlay.at(-1), "sticky");
+  w.fromClient({ type: "cue", start: 1, end: 2, text: "{\\an8}<i>it</i>", sticky: true });
+  assert.strictEqual(w.overlay.at(-1), "{\\an8}<i>it</i>", "source text still sent for the echo");
+  assert.deepStrictEqual(w.markup.at(-1), { spans: [{ text: "it", i: true }], align: 8 });
   w.fromClient({ type: "clear" });
   assert.strictEqual(w.overlay.at(-1), "");
   assert.strictEqual(w.props["sub-visibility"], true, "IINA subs restored");

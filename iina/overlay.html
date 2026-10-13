@@ -11,10 +11,12 @@
         background: transparent;
       }
       #cap {
+        --tx: -50%;
+        --ty: 0;
         position: absolute;
         left: 50%;
         bottom: 7%;
-        transform: translateX(-50%);
+        transform: translate(var(--tx), var(--ty));
         box-sizing: border-box;
         max-width: 88%;
         width: max-content;
@@ -29,18 +31,73 @@
         overflow-wrap: anywhere;
         display: none;
       }
+      /* {\anN} positions: bottom-centre is the default above */
+      #cap.middle {
+        bottom: auto;
+        top: 50%;
+        --ty: -50%;
+      }
+      #cap.top {
+        bottom: auto;
+        top: 7%;
+      }
+      #cap.left {
+        left: 6%;
+        --tx: 0;
+        text-align: left;
+      }
+      #cap.right {
+        left: auto;
+        right: 6%;
+        --tx: 0;
+        text-align: right;
+      }
     </style>
   </head>
   <body>
     <div id="cap"></div>
     <script>
       const cap = document.getElementById("cap");
+      const ROWS = ["bottom", "middle", "top"];
+      const COLS = ["left", "center", "right"];
+
+      function decodeMarkup(d, text) {
+        try {
+          return JSON.parse(decodeURIComponent(d.m));
+        } catch {
+          return { spans: [{ text }], align: 2 };
+        }
+      }
+
+      // one text node per span, wrapped in a styled <span> when it has any
+      // formatting; text only ever goes in via createTextNode
+      function spanNode(sp) {
+        const node = document.createTextNode(sp.text);
+        if (!(sp.b || sp.i || sp.u || sp.s || sp.color)) {
+          return node;
+        }
+        const el = document.createElement("span");
+        el.style.fontWeight = sp.b ? "800" : "";
+        el.style.fontStyle = sp.i ? "italic" : "";
+        el.style.textDecorationLine = [sp.u && "underline", sp.s && "line-through"].filter(Boolean).join(" ");
+        el.style.color = sp.color || "";
+        el.appendChild(node);
+        return el;
+      }
+
       function setCue(d) {
         const text = decodeURIComponent((d && d.t) || "");
-        cap.textContent = text;
-        cap.style.display = text ? "block" : "none";
-        // echo back what is actually in the DOM, so the plugin can confirm it
-        iina.postMessage("shown", { t: encodeURIComponent(cap.style.display === "none" ? "" : cap.textContent) });
+        const mk = decodeMarkup(d || {}, text);
+        cap.replaceChildren(...mk.spans.map(spanNode));
+        const a = (mk.align || 2) - 1;
+        cap.className = ROWS[Math.floor(a / 3)] + " " + COLS[a % 3];
+        const plain = mk.spans.map((sp) => sp.text).join("");
+        cap.style.display = plain ? "block" : "none";
+        // echo back what is actually in the DOM, so the plugin can confirm it.
+        // The plugin compares against the cue's source text, tags and all, so
+        // report that when the DOM holds exactly its rendered text.
+        const shown = cap.style.display === "none" ? "" : cap.textContent;
+        iina.postMessage("shown", { t: encodeURIComponent(shown && shown === plain ? text : shown) });
       }
       if (window.iina) {
         iina.onMessage("cue", setCue);

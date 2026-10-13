@@ -103,6 +103,138 @@ function isLoopback(desc) {
   return /^(127\.|::1|\[::1\]|localhost|::ffff:127\.)/.test(desc);
 }
 
+// --- caption markup ----------------------------------------------------------
+
+// CSS named colours, accepted by <font color="...">.
+const NAMED_COLORS = new Set(
+  (
+    "aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown " +
+    "burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan " +
+    "darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid " +
+    "darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet " +
+    "deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro " +
+    "ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki " +
+    "lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow " +
+    "lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray " +
+    "lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine " +
+    "mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise " +
+    "mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab " +
+    "orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru " +
+    "pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown " +
+    "seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan " +
+    "teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen"
+  ).split(" "),
+);
+
+function validColor(c) {
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(c) || NAMED_COLORS.has(c.toLowerCase());
+}
+
+// The style an opening tag adds, or null if the tag is malformed. `attrs` is
+// everything between the tag name and ">".
+function flagTag(flag) {
+  return (attrs) => (attrs.trim() === "" ? { [flag]: true } : null);
+}
+
+function fontTag(attrs) {
+  if (attrs !== "" && !/^\s/.test(attrs)) {
+    return null; // e.g. <fontx>
+  }
+  const m = /\bcolor\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"']+))/i.exec(attrs);
+  const color = m ? (m[1] ?? m[2] ?? m[3]).trim() : "";
+  return validColor(color) ? { color } : {};
+}
+
+const TAGS = { b: flagTag("b"), i: flagTag("i"), u: flagTag("u"), s: flagTag("s"), font: fontTag };
+
+// A tag (<b>, </font>, <font color=red>) or an ASS override block ({\an8}).
+const TOKEN = /<(\/?)([a-z]+)([^<>]*)>|\{\\([^{}]*)\}/gi;
+
+// Effective style of the open-tag stack: flags are on if any open tag sets
+// them; the innermost colour wins.
+function styleOf(stack) {
+  const st = {};
+  for (const t of stack) {
+    Object.assign(st, t.style);
+  }
+  return st;
+}
+
+function sameStyle(a, b) {
+  return a.b === b.b && a.i === b.i && a.u === b.u && a.s === b.s && a.color === b.color;
+}
+
+function emit(out, text, stack) {
+  if (text === "") {
+    return;
+  }
+  const style = styleOf(stack);
+  const last = out.spans[out.spans.length - 1];
+  if (last && sameStyle(last, style)) {
+    last.text += text;
+  } else {
+    out.spans.push(Object.assign({ text }, style));
+  }
+}
+
+// Closes the innermost open `name`; returns false for a stray closer.
+// Closing a tag that isn't innermost only drops that tag, so overlapping
+// tags (<b>x<i>y</b>z</i>) still style what a reader would expect.
+function closeTag(stack, name, attrs) {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i].name === name && attrs.trim() === "") {
+      stack.splice(i, 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+function openTag(stack, name, attrs) {
+  const tag = Object.prototype.hasOwnProperty.call(TAGS, name) ? TAGS[name] : null;
+  const style = tag && tag(attrs);
+  if (!style) {
+    return false;
+  }
+  stack.push({ name, style });
+  return true;
+}
+
+// Handles one matched token; returns false if it should stay literal text.
+function applyToken(out, stack, m) {
+  if (m[4] !== undefined) {
+    const an = /\\an([1-9])/.exec("\\" + m[4]);
+    if (an && out.align === null) {
+      out.align = Number(an[1]);
+    }
+    return true;
+  }
+  const name = m[2].toLowerCase();
+  return m[1] ? closeTag(stack, name, m[3]) : openTag(stack, name, m[3]);
+}
+
+// Parses SRT inline markup (<b> <i> <u> <s> <font color>, nestable, any case)
+// into styled spans, and strips ASS override blocks, keeping the first {\anN}
+// as `align` (numpad layout: 1-3 bottom, 4-6 middle, 7-9 top; default 2).
+// Unknown or malformed tags and stray closers stay as literal text; unclosed
+// tags run to the end of the cue.
+function markup(text) {
+  const out = { spans: [], align: null };
+  const stack = [];
+  const src = String(text || "");
+  let at = 0;
+  for (const m of src.matchAll(TOKEN)) {
+    // a literal token just becomes part of the next run of text
+    emit(out, src.slice(at, m.index), stack);
+    at = m.index;
+    if (applyToken(out, stack, m)) {
+      at += m[0].length;
+    }
+  }
+  emit(out, src.slice(at), stack);
+  return { spans: out.spans, align: out.align || 2 };
+}
+
 function hello(player) {
   return { type: "hello", server: "cueline-iina", version: VERSION, player: player || null };
 }
@@ -119,4 +251,5 @@ module.exports = {
   toPath,
   isLoopback,
   hello,
+  markup,
 };

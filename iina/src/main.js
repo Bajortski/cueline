@@ -65,7 +65,10 @@ function showText(text) {
   if (!S.overlayReady) {
     return false;
   }
-  overlay.postMessage("cue", { t: encodeURIComponent(text || "") });
+  // strings cross the overlay bridge URI-encoded so quotes, backslashes and
+  // newlines arrive intact; the markup goes as encoded JSON for the same reason
+  const src = text || "";
+  overlay.postMessage("cue", { t: encodeURIComponent(src), m: encodeURIComponent(JSON.stringify(P.markup(src))) });
   if (text) {
     hideSubs();
   }
