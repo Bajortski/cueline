@@ -29,11 +29,8 @@ local function apply(force)
   vim.b[buf].cueline_ssa_commas = n
   vim.api.nvim_buf_call(buf, function()
     vim.cmd("syntax clear ssaDialogueFields")
-    vim.cmd(
-      ([[syntax match ssaDialogueFields /\([^,]*,\)\{%d\}/ contained transparent skipwhite contains=ssaField,ssaDelimiter nextgroup=ssaText]]):format(
-        n
-      )
-    )
+    vim.cmd(([[syntax match ssaDialogueFields /\([^,]*,\)\{%d\}/ contained transparent skipwhite]]
+      .. [[ contains=ssaField,ssaDelimiter nextgroup=ssaText]]):format(n))
   end)
 end
 
