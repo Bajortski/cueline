@@ -82,6 +82,11 @@ Video → Exit Music Mode in IINA. Everything else works regardless.
 ==============================================================================
 4. COMMANDS                                                 *cueline-commands*
 
+Every command also works typed all in lowercase, e.g. `:cuelineopen`. These
+are command-line abbreviations (user commands must start with a capital), so
+they expand only when typed as the command name, and Tab completion knows
+only the capitalised names.
+
 :CuelineOpen [path]                                             *:CuelineOpen*
     Open the media for the current transcript in IINA, and connect. Without
     [path], looks for a file with the same name and a known media extension

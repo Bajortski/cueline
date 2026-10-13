@@ -172,6 +172,9 @@ These are set in subtitle buffers (`.srt`, `.ass`, `.ssa`) only. All of them can
 | `:CuelineStatus` | Show connection and player state |
 | `:CuelineExport [output]` | Convert the buffer to YouTube's `.ytt` (see [Exporting for YouTube](#exporting-for-youtube)) |
 
+Every command can also be typed in lowercase (`:cuelineopen`, `:cuelinenudge 3`),
+once the plugin has loaded.
+
 Full documentation is in `:help cueline`.
 
 ## Configuration
