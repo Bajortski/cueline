@@ -1,5 +1,6 @@
--- cueline: transcript (SRT) editing against a live IINA player.
+-- cueline: transcript (SRT/ASS) editing against a live IINA player.
 local srt = require("cueline.srt")
+local lookup = require("cueline.cues")
 local buffer = require("cueline.buffer")
 local client = require("cueline.client")
 
@@ -12,8 +13,8 @@ local defaults = {
   host = "127.0.0.1",
   port = 10427,
   reconnect = true, -- keep retrying while :CuelineConnect is in effect
-  auto_attach = true, -- attach to every buffer with filetype srt
-  auto_connect = false, -- connect when the first SRT buffer attaches
+  auto_attach = true, -- attach to every buffer with filetype srt or ssa (.ass/.ssa)
+  auto_connect = false, -- connect when the first subtitle buffer attaches
   follow = true, -- move the cursor along with playback
   follow_idle_ms = 2500, -- ...but not within this long of your own cursor moves/edits
   follow_center = true, -- keep the playing cue centred (false: scroll only when it leaves the window)
@@ -46,7 +47,7 @@ M.config = vim.deepcopy(defaults)
 M.player = { pos = 0, paused = true, speed = 1, file = nil, duration = nil }
 M.shown = nil -- last text the player reported as rendered
 M.shown_rendered = nil -- the same, as the player's DOM holds it (tags applied)
-M.track = nil -- the SRT buffer following the player
+M.track = nil -- the subtitle buffer following the player
 
 local last_sent = nil
 local follow_pos = nil -- where follow last put the cursor
@@ -91,7 +92,7 @@ local function cursor_cue()
     return nil
   end
   local cues = buffer.cues(buf)
-  local i = srt.nearest_line(cues, api.nvim_win_get_cursor(win)[1] - 1)
+  local i = buffer.fmt(buf).nearest_line(cues, api.nvim_win_get_cursor(win)[1] - 1)
   return i, cues[i or 0], buf
 end
 
@@ -99,9 +100,8 @@ end
 -- preview sync: what the player should be showing
 
 local function window_msg(cues)
-  local i0 = srt.from_time(cues, M.position())
   local items = {}
-  for i = i0, math.min(#cues, i0 + M.config.lookahead) do
+  for _, i in ipairs(lookup.window(cues, M.position(), M.config.lookahead)) do
     local c = cues[i]
     items[#items + 1] = { id = i, start = c.start, ["end"] = c.stop, text = c.text }
   end
@@ -155,7 +155,10 @@ local function follow_cursor(buf, cue)
   end)
 end
 
---- Recompute the active cue for the current player position.
+--- Recompute the active cues for the current player position. Every active
+-- cue is highlighted; follow tracks the latest-starting one, which is the
+-- line that just came up (a long sign or an overlapping earlier line stays
+-- lit without pulling the cursor back to it).
 function M.refresh()
   local buf = track_buf()
   if not buf then
@@ -163,8 +166,9 @@ function M.refresh()
   end
   local st = buffer.get(buf)
   local cues = buffer.cues(buf)
-  local i = srt.at_time(cues, M.position())
-  buffer.highlight(buf, i)
+  local active = lookup.active(cues, M.position())
+  buffer.highlight(buf, active)
+  local i = active[#active]
   -- keyed by start time so a reparse alone never counts as a cue change
   local key = i and cues[i].start
   if key ~= st.active then
@@ -349,14 +353,15 @@ local function set_timing(which, value)
   if not cue then
     return notify("no cue under cursor", vim.log.levels.WARN)
   end
-  local start, stop = cue.start, cue.stop
+  local fmt, start, stop = buffer.fmt(buf), cue.start, cue.stop
   if which == "start" then
-    start = math.max(0, math.min(value, stop - 0.001))
+    start = math.max(0, math.min(value, stop - fmt.step))
   else
-    stop = math.max(value, start + 0.001)
+    stop = math.max(value, start + fmt.step)
   end
   local line = api.nvim_buf_get_lines(buf, cue.ts_lnum, cue.ts_lnum + 1, false)[1]
-  api.nvim_buf_set_lines(buf, cue.ts_lnum, cue.ts_lnum + 1, false, { srt.replace_timing(line, start, stop) })
+  line = fmt.replace_timing(line, start, stop, buffer.cues(buf).script)
+  api.nvim_buf_set_lines(buf, cue.ts_lnum, cue.ts_lnum + 1, false, { line })
   buffer.cues(buf) -- reparse now so the refresh below sees the new timing
   if which == "start" and M.config.seek_on_adjust and client.status == "connected" then
     client.send({ type = "seek", pos = start })
@@ -378,7 +383,7 @@ function M.stamp(which)
   end
 end
 
---- Media file matching an SRT path, or nil.
+--- Media file matching a subtitle path, or nil.
 function M.find_media(path)
   local dir, base = fn.fnamemodify(path, ":p:h"), fn.fnamemodify(path, ":t:r")
   for _, sub in ipairs(M.config.media_dirs) do

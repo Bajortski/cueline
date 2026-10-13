@@ -220,8 +220,12 @@ end)
 describe("health", function()
   it(":checkhealth cueline runs", function()
     vim.cmd("checkhealth cueline")
-    local text = table.concat(api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-    H.truthy(text:find("cueline: environment", 1, true), text)
+    -- newer Neovims fill the health buffer asynchronously
+    local text = ""
+    wait(2000, function()
+      text = table.concat(api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+      return text:find("cueline: environment", 1, true) ~= nil
+    end, "health report")
     vim.cmd("bwipeout!")
   end)
 end)

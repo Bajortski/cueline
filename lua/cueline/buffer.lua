@@ -1,13 +1,22 @@
 -- Per-buffer cue index: parsing, incremental text updates and the active-cue
 -- highlight.
 local srt = require("cueline.srt")
+local ass = require("cueline.ass")
 
 local api = vim.api
 local M = {}
 
 M.ns = api.nvim_create_namespace("cueline")
 
----@type table<integer, {cues: table, dirty: boolean, active: number?, mark: integer?}>
+--- Format module per filetype. Each has parse, parse_timing, format_ts,
+-- format_timing, replace_timing, patch, at_time, from_time, at_line,
+-- nearest_line and step.
+M.formats = { srt = srt, ssa = ass }
+
+-- fallback for :CuelineAttach on a buffer whose filetype isn't one of ours
+local by_ext = { srt = srt, ass = ass, ssa = ass }
+
+---@type table<integer, {fmt: table, cues: table, dirty: boolean, active: number?, marks: integer[]?}>
 M.bufs = {}
 
 function M.get(buf)
@@ -15,7 +24,7 @@ function M.get(buf)
 end
 
 local function reparse(st, buf)
-  st.cues = srt.parse(api.nvim_buf_get_lines(buf, 0, -1, false))
+  st.cues = st.fmt.parse(api.nvim_buf_get_lines(buf, 0, -1, false))
   st.dirty = false
 end
 
@@ -31,26 +40,28 @@ function M.cues(buf)
   return st.cues
 end
 
-local function is_text_line(line)
-  return line:find("%S") ~= nil and not srt.parse_timing(line)
+--- Format module for buf: by filetype, else by file extension, else SRT.
+function M.format_for(buf)
+  local ext = vim.fn.fnamemodify(api.nvim_buf_get_name(buf), ":e"):lower()
+  return M.formats[vim.bo[buf].filetype] or by_ext[ext] or srt
+end
+
+--- Format module of an attached buffer.
+function M.fmt(buf)
+  local st = M.bufs[buf]
+  return st and st.fmt
 end
 
 -- Try to apply an edit of lines [first, last) (same line count) as a pure
 -- text change inside one cue. Returns the patched cue index or nil.
 local function patch_text(st, buf, first, last)
-  local i = srt.at_line(st.cues, first)
+  local i = st.fmt.at_line(st.cues, first)
   local cue = st.cues[i or 0]
   if not cue or first < cue.first or last - 1 > cue.last then
     return nil
   end
   local lines = api.nvim_buf_get_lines(buf, cue.first, cue.last + 1, false)
-  for _, l in ipairs(lines) do
-    if not is_text_line(l) then
-      return nil
-    end
-  end
-  cue.text = table.concat(lines, "\n")
-  return i
+  return st.fmt.patch(st.cues, cue, lines) and i or nil
 end
 
 local function on_lines(_, buf, _, first, last, new_last)
@@ -68,7 +79,7 @@ function M.attach(buf)
   if M.bufs[buf] then
     return M.bufs[buf]
   end
-  local st = { dirty = true }
+  local st = { dirty = true, fmt = M.format_for(buf) }
   M.bufs[buf] = st
   reparse(st, buf)
   api.nvim_buf_attach(buf, false, {
@@ -95,30 +106,19 @@ end
 
 function M.clear_highlight(buf)
   local st = M.bufs[buf]
-  if st and st.mark then
-    pcall(api.nvim_buf_del_extmark, buf, M.ns, st.mark)
-    st.mark = nil
+  if not st then
+    return
   end
-  if st then
-    st.hl_key = nil
+  for _, mark in ipairs(st.marks or {}) do
+    pcall(api.nvim_buf_del_extmark, buf, M.ns, mark)
   end
+  st.marks = nil
+  st.hl_key = nil
 end
 
---- Highlight cue i (or clear when nil). Cheap no-op when unchanged.
-function M.highlight(buf, i)
-  local st = M.bufs[buf]
-  local cue = i and st.cues[i]
-  local key = cue and (cue.ts_lnum .. ":" .. cue.last) or nil
-  if key == st.hl_key then
-    return
-  end
-  M.clear_highlight(buf)
-  if not cue then
-    return
-  end
-  local last = math.max(cue.last, cue.ts_lnum)
-  st.mark = api.nvim_buf_set_extmark(buf, M.ns, cue.ts_lnum, 0, {
-    end_row = last + 1,
+local function mark_cue(buf, cue)
+  return api.nvim_buf_set_extmark(buf, M.ns, cue.ts_lnum, 0, {
+    end_row = math.max(cue.last, cue.ts_lnum) + 1,
     end_col = 0,
     hl_group = "CuelineActive",
     hl_eol = true,
@@ -127,6 +127,30 @@ function M.highlight(buf, i)
     priority = 150,
     strict = false,
   })
+end
+
+--- Highlight the cues whose indices are in `list` (clear when nil or
+-- empty). Cheap no-op when unchanged.
+function M.highlight(buf, list)
+  local st = M.bufs[buf]
+  local cues = {}
+  local keys = {}
+  for _, i in ipairs(list or {}) do
+    local cue = st.cues[i]
+    if cue then
+      cues[#cues + 1] = cue
+      keys[#keys + 1] = cue.ts_lnum .. ":" .. cue.last
+    end
+  end
+  local key = table.concat(keys, ",")
+  if key == st.hl_key then
+    return
+  end
+  M.clear_highlight(buf)
+  st.marks = {}
+  for k, cue in ipairs(cues) do
+    st.marks[k] = mark_cue(buf, cue)
+  end
   st.hl_key = key
 end
 

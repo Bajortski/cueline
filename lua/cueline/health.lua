@@ -58,14 +58,28 @@ local function check_connection()
   vim.health.info(("not connected (port %d); %s"):format(cl.config.port, hint))
 end
 
+local function format_name(buffer, fmt)
+  for ft, f in pairs(buffer.formats) do
+    if f == fmt then
+      return ft
+    end
+  end
+  return "?"
+end
+
 local function check_buffers()
+  local buffer = require("cueline.buffer")
+  local fts = vim.tbl_keys(buffer.formats)
+  table.sort(fts)
+  vim.health.info("formats (by filetype): " .. table.concat(fts, ", ") .. "; ssa covers .ass and .ssa")
   local n = 0
-  for buf, st in pairs(require("cueline.buffer").bufs) do
+  for buf, st in pairs(buffer.bufs) do
     n = n + 1
-    vim.health.info(("%s: %d cues"):format(vim.api.nvim_buf_get_name(buf), #(st.cues or {})))
+    local name = vim.api.nvim_buf_get_name(buf)
+    vim.health.info(("%s (%s): %d cues"):format(name, format_name(buffer, st.fmt), #(st.cues or {})))
   end
   if n == 0 then
-    vim.health.info("no SRT buffers attached")
+    vim.health.info("no subtitle buffers attached")
   end
 end
 

@@ -46,6 +46,10 @@ for name, def in pairs(commands) do
   vim.api.nvim_create_user_command(name, def[1], def[2])
 end
 
+-- subtitle filetypes cueline attaches to (cueline.buffer.formats has the
+-- parser for each); Neovim gives .ass and .ssa files the `ssa` filetype
+local filetypes = { srt = true, ssa = true }
+
 local function maybe_attach(buf)
   local c = cl()
   if c.config.auto_attach then
@@ -55,7 +59,7 @@ end
 
 vim.api.nvim_create_autocmd("FileType", {
   group = vim.api.nvim_create_augroup("cueline_ft", { clear = true }),
-  pattern = "srt",
+  pattern = vim.tbl_keys(filetypes),
   callback = function(ev)
     maybe_attach(ev.buf)
   end,
@@ -65,7 +69,7 @@ vim.api.nvim_create_autocmd("FileType", {
 -- setup() call that follows plugin loading (lazy.nvim `opts`) applies first
 vim.schedule(function()
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == "srt" then
+    if vim.api.nvim_buf_is_loaded(buf) and filetypes[vim.bo[buf].filetype] then
       maybe_attach(buf)
     end
   end
