@@ -50,6 +50,7 @@ npm test
 test/make-fixtures.sh      # generates the audio/video fixtures (needs ffmpeg)
 test/e2e/run.sh mp4
 test/e2e/run.sh m4a
+test/e2e/run.sh ass        # the mp4 with sample.ass rendered live by libass
 ```
 
 The end-to-end run writes IINA's logs to `$TMPDIR/cueline-e2e/`.
