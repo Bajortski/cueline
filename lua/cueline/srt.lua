@@ -1,5 +1,7 @@
--- SRT parsing, formatting and lookup. Pure Lua, no Neovim API, so it can be
--- tested (and benchmarked) on its own.
+-- SRT parsing and formatting. Pure Lua, no Neovim API, so it can be tested
+-- (and benchmarked) on its own.
+local lookup = require("cueline.cues")
+
 local M = {}
 
 local TS = "(%d+):(%d%d):(%d%d)[,.](%d%d%d)"
@@ -74,43 +76,6 @@ function M.parse(lines)
   return cues
 end
 
---- Index of the last cue whose `key` is <= value (cues ordered by that key),
--- or 0 if none.
-local function upper(cues, key, value)
-  local lo, hi = 1, #cues
-  local found = 0
-  while lo <= hi do
-    local mid = math.floor((lo + hi) / 2)
-    if cues[mid][key] <= value then
-      found = mid
-      lo = mid + 1
-    else
-      hi = mid - 1
-    end
-  end
-  return found
-end
-
---- Cue index playing at time t, or nil. Assumes cues sorted by start (the
--- normal SRT case); overlapping cues resolve to the latest-starting one.
-function M.at_time(cues, t)
-  local i = upper(cues, "start", t)
-  if i > 0 and t < cues[i].stop then
-    return i
-  end
-  return nil
-end
-
---- Index of the cue playing at t, else the next cue to start after t
--- (may be #cues + 1 when past the end).
-function M.from_time(cues, t)
-  local i = upper(cues, "start", t)
-  if i > 0 and t < cues[i].stop then
-    return i
-  end
-  return i + 1
-end
-
 --- Rewrite the timing on a timestamp line, keeping anything after the
 -- second timestamp (e.g. position hints).
 function M.replace_timing(line, start, stop)
@@ -118,35 +83,17 @@ function M.replace_timing(line, start, stop)
   return M.format_timing(start, stop) .. rest
 end
 
---- Cue index owning 0-based line `lnum` (its index line, timestamp line or
--- text lines), or nil when the line is between cues.
-function M.at_line(cues, lnum)
-  local i = upper(cues, "ts_lnum", lnum + 1)
-  local cue = cues[i]
-  if not cue then
-    return nil
-  end
-  -- the numeric index line sits directly above the timestamp line
-  if lnum >= cue.ts_lnum - 1 and lnum <= math.max(cue.last, cue.ts_lnum) then
-    if lnum == cue.ts_lnum - 1 and i > 1 and cues[i - 1].last >= lnum then
-      return i - 1
-    end
-    return i
-  end
-  return nil
+-- Lookups live in cueline.cues; SRT puts the index number on the line
+-- above the timestamp, so that line belongs to the cue too.
+M.at_time = lookup.at_time
+M.from_time = lookup.from_time
+
+function M.at_line(list, lnum)
+  return lookup.at_line(list, lnum, 1)
 end
 
---- Nearest cue at or after 0-based line lnum (for cursor on blank lines).
-function M.nearest_line(cues, lnum)
-  local i = M.at_line(cues, lnum)
-  if i then
-    return i
-  end
-  local j = upper(cues, "ts_lnum", lnum) + 1
-  if j <= #cues then
-    return j
-  end
-  return nil
+function M.nearest_line(list, lnum)
+  return lookup.nearest_line(list, lnum, 1)
 end
 
 return M
