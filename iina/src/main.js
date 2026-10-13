@@ -126,7 +126,12 @@ event.on("iina.window-loaded", setupOverlay);
 
 event.on("iina.plugin-overlay-loaded", () => {
   overlay.onMessage("shown", (d) =>
-    post({ type: "shown", text: decodeURIComponent((d && d.t) || ""), subs_hidden: S.savedSubVis !== null }),
+    post({
+      type: "shown",
+      text: decodeURIComponent((d && d.t) || ""),
+      rendered: decodeURIComponent((d && d.r) || ""),
+      subs_hidden: S.savedSubVis !== null,
+    }),
   );
   overlay.setClickable(false);
   overlay.show();

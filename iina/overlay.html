@@ -97,7 +97,10 @@
         // The plugin compares against the cue's source text, tags and all, so
         // report that when the DOM holds exactly its rendered text.
         const shown = cap.style.display === "none" ? "" : cap.textContent;
-        iina.postMessage("shown", { t: encodeURIComponent(shown && shown === plain ? text : shown) });
+        iina.postMessage("shown", {
+          t: encodeURIComponent(shown && shown === plain ? text : shown),
+          r: encodeURIComponent(shown),
+        });
       }
       if (window.iina) {
         iina.onMessage("cue", setCue);

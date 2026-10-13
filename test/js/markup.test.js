@@ -111,10 +111,16 @@ function loadOverlay() {
   const script = /<script>([\s\S]*?)<\/script>/.exec(html)[1];
   const cap = makeElement("div");
   const posted = [];
+  const rendered = [];
   const window = {};
   const ctx = {
     window,
-    iina: { postMessage: (name, data) => posted.push([name, decodeURIComponent(data.t)]) },
+    iina: {
+      postMessage: (name, data) => {
+        posted.push([name, decodeURIComponent(data.t)]);
+        rendered.push(decodeURIComponent(data.r));
+      },
+    },
     document: {
       getElementById: () => cap,
       createElement: makeElement,
@@ -123,7 +129,7 @@ function loadOverlay() {
   };
   vm.runInNewContext(script, ctx);
   const show = (text) => window.setCue({ t: encodeURIComponent(text), m: encodeURIComponent(JSON.stringify(markup(text))) });
-  return { cap, posted, show, setCue: window.setCue };
+  return { cap, posted, rendered, show, setCue: window.setCue };
 }
 
 test("overlay renders spans, positions, and echoes the source text", () => {
@@ -135,6 +141,7 @@ test("overlay renders spans, positions, and echoes the source text", () => {
   assert.strictEqual(o.cap.children[0].style.fontWeight, "800");
   assert.strictEqual(o.cap.children[2].style.color, "red");
   assert.deepStrictEqual(o.posted.at(-1), ["shown", "{\\an7}<b>bold</b> <font color=red>red</font>\nplain"]);
+  assert.strictEqual(o.rendered.at(-1), "bold red\nplain");
 
   o.show("a < b");
   assert.strictEqual(o.cap.className, "bottom center");

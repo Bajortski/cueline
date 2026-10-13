@@ -45,6 +45,7 @@ M.config = vim.deepcopy(defaults)
 
 M.player = { pos = 0, paused = true, speed = 1, file = nil, duration = nil }
 M.shown = nil -- last text the player reported as rendered
+M.shown_rendered = nil -- the same, as the player's DOM holds it (tags applied)
 M.track = nil -- the SRT buffer following the player
 
 local last_sent = nil
@@ -263,6 +264,7 @@ client.handlers = {
   end,
   shown = function(msg)
     M.shown = msg.text
+    M.shown_rendered = msg.rendered
     M.subs_hidden = msg.subs_hidden
   end,
   error = function(msg)

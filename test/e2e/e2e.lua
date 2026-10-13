@@ -108,6 +108,17 @@ it("an edit in Neovim shows up in the player immediately", function()
   io.write(("    edit -> rendered ack in %.0f ms\n"):format(now() - t0))
 end)
 
+it("formatting tags render as formatting, not literal text", function()
+  local row = cue_row("That is a natural one (edited)")
+  local src = '{\\an8}That is a <b>natural</b> <font color="#ff0">one</font>'
+  api.nvim_buf_set_lines(buf, row - 1, row, false, { src })
+  api.nvim_exec_autocmds("TextChanged", { buffer = buf })
+  wait(2000, function()
+    return cl.shown == src .. "\n(cue 7 second line)"
+  end, "tagged text rendered")
+  eq("That is a natural one\n(cue 7 second line)", cl.shown_rendered, "tags applied, not shown literally")
+end)
+
 it(":CuelinePause pauses and position holds", function()
   -- mpv quirk: pausing an audio-only file within ~150 ms of a seek leaves
   -- time-pos creeping forward for a second; play a moment first

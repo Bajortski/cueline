@@ -34,7 +34,7 @@ that speaks WebSocket can use it: a script, another editor, a remote control.
 | `time` | `pos`, `paused`, `speed` | Playback position; sent when it changes, at most 10 times a second |
 | `state` | `pos`, `paused`, `speed` | Paused or resumed; sent immediately |
 | `file` | `file`, `duration`, `pos`, `paused`, `speed` | A file was loaded, or a different window became active |
-| `shown` | `text`, `subs_hidden` | The caption now on screen reads `text` |
+| `shown` | `text`, `rendered`, `subs_hidden` | The caption now on screen reads `text` (the cue's source, formatting tags included); `rendered` is its visible text with tags applied |
 | `notice` | `message` | Something worth telling the user, e.g. music mode is hiding the caption |
 | `error` | `message` | A malformed message, or no player window is open |
 | `pong` | `id` | Reply to `ping` |

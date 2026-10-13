@@ -110,7 +110,7 @@ const playerEvents = {
   },
   shown: (msg, label) => {
     if (label === active) {
-      broadcast({ type: "shown", text: msg.text, subs_hidden: msg.subs_hidden });
+      broadcast({ type: "shown", text: msg.text, rendered: msg.rendered, subs_hidden: msg.subs_hidden });
     }
   },
   notice: (msg, label) => {
