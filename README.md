@@ -14,8 +14,10 @@ Fix a typo in Neovim and it's corrected on screen as you type. Put the cursor on
 a line and press Enter to hear it. Nudge a line's start or end time without
 leaving the keyboard.
 
-It works with any `.srt` file: auto-generated transcripts (Whisper and the
-like), subtitles you're translating, or captions you're timing by hand.
+It works with `.srt` files (auto-generated transcripts from Whisper and the
+like, subtitles you're translating, captions you're timing by hand) and with
+styled `.ass`/`.ssa` subtitles, which it previews with full styling and can
+export for YouTube.
 
 ## Requirements
 
@@ -50,7 +52,7 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```lua
 {
   "Bajortski/cueline",
-  ft = "srt",
+  ft = { "srt", "ssa" },
   cmd = { "CuelineConnect", "CuelineOpen" },
   opts = {},
 }
@@ -96,9 +98,42 @@ the caption either choose **Video → Exit Music Mode**, or turn off *Settings �
 General → Switch to "music mode" automatically when playing an audio file*.
 cueline tells you in Neovim when it detects this.
 
+## Styled subtitles
+
+**In `.srt` files**, the caption shows `<b>`, `<i>`, `<u>`, `<s>` and
+`<font color="…">` as formatting, and `{\an8}`-style tags move it (`{\an8}` is
+top centre).
+
+**`.ass`/`.ssa` files** are previewed by IINA's own subtitle renderer (libass),
+so styles, positioning, karaoke, fades and moves look as they will in a real
+player. Unsaved edits show up a moment after you stop typing. While an `.ass`
+buffer is attached, cueline loads it as a temporary subtitle track and puts
+your own subtitle track back when you detach or disconnect. Overlapping lines
+(a sign and dialogue at once) are all highlighted; following tracks the one
+that started most recently.
+
+### Exporting for YouTube
+
+YouTube ignores styling in `.srt`, `.vtt` and `.ttml` uploads. Its own
+timed-text format (`.ytt`, also called srv3) keeps colours, positioning and
+karaoke. `:CuelineExport` converts the current buffer, unsaved edits
+included, to `.ytt` next to the file, using
+[YTSubConverter](https://github.com/arcusmaximus/YTSubConverter/releases).
+
+Install YTSubConverter into `/Applications` (or put it on your `PATH`, or set
+`ytsubconverter`). Its macOS app isn't notarized, so if macOS refuses to run
+it, clear the quarantine flag:
+
+```
+xattr -dr com.apple.quarantine /Applications/YTSubConverter.app
+```
+
+Not every ASS feature survives the trip; `:help cueline-export` lists what
+does, and YouTube's mobile apps drop some of it.
+
 ## Keys
 
-These are set in `.srt` buffers only. All of them can be changed or turned off
+These are set in subtitle buffers (`.srt`, `.ass`, `.ssa`) only. All of them can be changed or turned off
 (see [Configuration](#configuration)).
 
 | Key | Action |
@@ -131,6 +166,7 @@ These are set in `.srt` buffers only. All of them can be changed or turned off
 | `:CuelineStamp {start\|end}` | Set the line's start or end to the playback position |
 | `:CuelineAttach` / `:CuelineDetach` | Turn cueline on or off for the current buffer |
 | `:CuelineStatus` | Show connection and player state |
+| `:CuelineExport [output]` | Convert the buffer to YouTube's `.ytt` (see [Exporting for YouTube](#exporting-for-youtube)) |
 
 Full documentation is in `:help cueline`.
 
@@ -141,8 +177,8 @@ Pass options to `setup()` (or `opts` in lazy.nvim). The defaults:
 ```lua
 require("cueline").setup({
   port = 10427,             -- must match the port in IINA's plugin settings
-  auto_attach = true,       -- turn on for every .srt buffer
-  auto_connect = false,     -- connect as soon as an .srt is opened
+  auto_attach = true,       -- turn on for every .srt/.ass buffer
+  auto_connect = false,     -- connect as soon as a subtitle file is opened
   follow = true,            -- move the cursor along with playback
   follow_idle_ms = 2500,    -- ...but not this soon after you move or type
   follow_center = true,     -- keep the playing line centred (false: scroll only at the edge)
@@ -151,6 +187,7 @@ require("cueline").setup({
   nudge = 2,                -- seconds skipped by the nudge keys
   adjust = 0.1,             -- seconds moved by the timing keys
   seek_on_adjust = true,    -- after moving a start time, jump there so you can hear it
+  ytsubconverter = nil,     -- path to YTSubConverter (nil: search PATH and /Applications)
   media_dirs = { ".", "../audio", "../video", "../media" }, -- where :CuelineOpen looks
   keymaps = {
     seek = "<CR>",
@@ -206,19 +243,25 @@ plugin ignores anything that doesn't come from your own machine, and it can
 only control playback, but if you're on an untrusted network you may want your
 firewall to block the port.
 
+The IINA plugin asks for file-system access. It uses it only to load the
+temporary subtitle track that previews `.ass` files.
+
 ## Known limitations
 
 - The caption is drawn on the video, so it isn't visible in music mode or
   picture-in-picture.
 - Only one IINA window is controlled at a time: whichever most recently opened
   a file or started playing.
-- Only `.srt` files are supported.
+- Only `.srt` and `.ass`/`.ssa` files are supported.
+- Reloading the `.ass` preview track can blank the subtitles for a frame.
 
 ## How it works
 
 The IINA plugin runs a small WebSocket server and reports the playback position
 about ten times a second. Neovim connects to it, works out which line is
-playing, and sends that line (and the next few) back to be drawn as a caption.
+playing, and sends that line (and the next few) back to be drawn as a caption. For `.ass`
+files it instead writes the buffer to a temporary file and has IINA load and
+reload it as a subtitle track.
 The full message format is in [docs/protocol.md](docs/protocol.md), if you want
 to write your own client.
 

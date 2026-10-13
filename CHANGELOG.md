@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- `.srt` captions render `<b>`, `<i>`, `<u>`, `<s>` and `<font color>` tags,
+  and `{\anN}` positions them.
+- `.ass`/`.ssa` support: parsing, highlighting (including overlapping lines),
+  following and retiming in Neovim, and a live preview through IINA's own
+  libass renderer, unsaved edits included.
+- `:CuelineExport` converts a buffer to YouTube's styled `.ytt` format with
+  YTSubConverter.
+- The IINA plugin now asks for file-system access, to load the `.ass` preview
+  track.
+- The `shown` message also carries `rendered`, and IINA sends `track` updates
+  (see docs/protocol.md).
+
 ## 0.1.0 (2026-09-30)
 
 First release.
