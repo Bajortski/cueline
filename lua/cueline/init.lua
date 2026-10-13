@@ -25,6 +25,7 @@ local defaults = {
   nudge = 2, -- seconds for the nudge keys
   adjust = 0.1, -- seconds for the timestamp adjust keys
   seek_on_adjust = true, -- after moving a cue's start, seek there to hear it
+  double_tap_ms = 400, -- pressing the seek key twice within this toggles play/pause (0: off)
   media_exts = { "m4a", "mp3", "wav", "flac", "ogg", "opus", "aac", "mp4", "mkv", "mov", "webm", "m4v" },
   media_dirs = { ".", "../audio", "../video", "../media" },
   ytsubconverter = nil, -- path to YTSubConverter for :CuelineExport (nil: search PATH and /Applications)
@@ -336,6 +337,24 @@ function M.toggle_pause()
   send({ type = "toggle-pause" })
 end
 
+local last_seek_tap = nil -- { at = ms, buf, row } of the last seek-key press
+
+--- The seek key: seek to the cue under the cursor, or, pressed again on the
+-- same line within double_tap_ms, toggle play/pause.
+function M.seek_or_toggle()
+  local now = vim.uv.hrtime() / 1e6
+  local here = { buf = api.nvim_get_current_buf(), row = api.nvim_win_get_cursor(0)[1] }
+  local prev = last_seek_tap
+  local same_line = prev and prev.buf == here.buf and prev.row == here.row
+  if same_line and now - prev.at <= (M.config.double_tap_ms or 0) then
+    last_seek_tap = nil
+    return M.toggle_pause()
+  end
+  here.at = now
+  last_seek_tap = here
+  M.seek()
+end
+
 function M.nudge(delta)
   send({ type = "nudge", delta = tonumber(delta) or M.config.nudge })
 end
@@ -447,7 +466,7 @@ end
 -- buffer attach, keymaps, autocmds
 
 local keymap_actions = {
-  seek = { M.seek, "Seek player to cue" },
+  seek = { M.seek_or_toggle, "Seek player to cue (twice: play/pause)" },
   replay = { function() M.seek(true) end, "Play from cue start" },
   toggle_pause = { M.toggle_pause, "Play/pause" },
   follow = { function() M.follow() end, "Toggle follow" },

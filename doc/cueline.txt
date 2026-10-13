@@ -148,7 +148,8 @@ Set in subtitle buffers only, in normal mode. In `.ass`/`.ssa` files they act
 on the `Dialogue:` line under the cursor; timing changes rewrite only its
 Start and End fields, rounded to hundredths of a second.
 
-    <CR>               Jump the player to the line under the cursor
+    <CR>               Jump the player to the line under the cursor; press
+                       it twice quickly to play/pause (|cueline-double_tap_ms|)
     <localleader>r     Play the line under the cursor from its start
     <localleader>p     Play / pause
     <localleader>f     Turn following on or off
@@ -228,6 +229,12 @@ adjust = 0.1
                                                       *cueline-seek_on_adjust*
 seek_on_adjust = true
     After moving a line's start, jump the player there so you can hear it.
+
+                                                       *cueline-double_tap_ms*
+double_tap_ms = 400
+    Pressing the seek key (<CR>) twice on the same line within this many
+    milliseconds toggles play/pause; the first press still jumps to the line.
+    0 turns it off.
 
                                                           *cueline-media_exts*
 media_exts = { "m4a", "mp3", "wav", "flac", "ogg", "opus", "aac",

@@ -10,6 +10,7 @@
 - `.ass` files may trim unused event fields (margins, Effect) from their
   `Format:` line; cueline restores them for IINA and the export, and fixes
   Neovim's `ssa` syntax highlighting, which assumes all ten fields.
+- Pressing `<CR>` twice quickly toggles play/pause (`double_tap_ms`).
 - Every command also works typed in lowercase (`:cuelineopen`).
 - `:CuelineExport` converts a buffer to YouTube's styled `.ytt` format with
   YTSubConverter.

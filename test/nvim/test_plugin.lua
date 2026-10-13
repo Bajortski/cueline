@@ -169,6 +169,30 @@ describe("commands -> player", function()
     near(-2, server.last("nudge").delta)
     near(1.5, server.last("speed").speed)
   end)
+  it("the seek key seeks once, and twice in quick succession toggles play/pause", function()
+    local seeks, toggles = server.count("seek"), server.count("toggle-pause")
+    cl.config.double_tap_ms = 400
+    cl.seek_or_toggle()
+    cl.seek_or_toggle()
+    wait(1000, function()
+      return server.count("toggle-pause") == toggles + 1
+    end)
+    eq(seeks + 1, server.count("seek"), "only the first tap seeks")
+    vim.wait(450)
+    cl.seek_or_toggle() -- too late to pair with the last one
+    wait(1000, function()
+      return server.count("seek") == seeks + 2
+    end)
+    eq(toggles + 1, server.count("toggle-pause"))
+    cl.config.double_tap_ms = 0
+    cl.seek_or_toggle()
+    cl.seek_or_toggle()
+    wait(1000, function()
+      return server.count("seek") == seeks + 4
+    end)
+    eq(toggles + 1, server.count("toggle-pause"), "0 turns double tap off")
+    cl.config.double_tap_ms = 400
+  end)
   it("lowercase spellings expand to the commands, only as the command name", function()
     local function typed(keys)
       api.nvim_feedkeys(api.nvim_replace_termcodes(keys, true, false, true), "xt", false)

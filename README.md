@@ -142,7 +142,7 @@ These are set in subtitle buffers (`.srt`, `.ass`, `.ssa`) only. All of them can
 
 | Key | Action |
 | --- | --- |
-| `<CR>` | Jump the player to the line under the cursor |
+| `<CR>` | Jump the player to the line under the cursor; press twice quickly to play / pause |
 | `<localleader>r` | Play the line under the cursor from its start |
 | `<localleader>p` | Play / pause |
 | `<localleader>f` | Turn following on or off |
@@ -194,6 +194,7 @@ require("cueline").setup({
   nudge = 2,                -- seconds skipped by the nudge keys
   adjust = 0.1,             -- seconds moved by the timing keys
   seek_on_adjust = true,    -- after moving a start time, jump there so you can hear it
+  double_tap_ms = 400,      -- seek key twice within this toggles play/pause (0: off)
   ytsubconverter = nil,     -- path to YTSubConverter (nil: search PATH and /Applications)
   media_dirs = { ".", "../audio", "../video", "../media" }, -- where :CuelineOpen looks
   keymaps = {
