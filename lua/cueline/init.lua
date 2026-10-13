@@ -3,6 +3,7 @@ local srt = require("cueline.srt")
 local lookup = require("cueline.cues")
 local buffer = require("cueline.buffer")
 local client = require("cueline.client")
+local live = require("cueline.live")
 
 local api, fn, uv = vim.api, vim.fn, vim.uv
 local M = {}
@@ -249,6 +250,7 @@ client.handlers = {
     client.send({ type = "config", hide_subs = M.config.hide_subs })
     update_clock()
     M.refresh()
+    live.sync(track_buf())
   end,
   time = function(msg)
     apply_player(msg)
@@ -265,6 +267,10 @@ client.handlers = {
     check_media()
     M.refresh()
     M.sync_preview(true)
+    live.sync(track_buf())
+  end,
+  track = function(msg)
+    live.state = msg
   end,
   shown = function(msg)
     M.shown = msg.text
@@ -286,6 +292,7 @@ client.handlers = {
   _closed = function(was, reason)
     last_sent = nil
     stop_clock()
+    live.reset()
     if was == "connected" then
       notify("disconnected (" .. tostring(reason) .. ")", vim.log.levels.WARN)
     end
@@ -423,6 +430,7 @@ function M.status()
     track = M.track and api.nvim_buf_get_name(M.track) or nil,
     shown = M.shown,
     subs_hidden = M.subs_hidden,
+    live_track = live.sent,
   }
 end
 
@@ -474,9 +482,10 @@ local function on_cursor()
   M.sync_preview()
 end
 
-local function on_edit()
+local function on_edit(ev)
   user_activity()
   M.refresh()
+  live.schedule(ev.buf)
 end
 
 function M.attach(buf)
@@ -496,8 +505,10 @@ function M.attach(buf)
   au("BufEnter", function()
     M.track = buf
     M.refresh()
+    live.switch(buf)
   end)
   au("BufWipeout", function()
+    live.drop(buf)
     buffer.detach(buf)
     api.nvim_del_augroup_by_id(group)
   end)
@@ -505,10 +516,12 @@ function M.attach(buf)
     M.connect()
   end
   M.refresh()
+  live.switch(buf)
 end
 
 function M.detach(buf)
   buf = (buf == nil or buf == 0) and api.nvim_get_current_buf() or buf
+  live.drop(buf)
   buffer.detach(buf)
   pcall(api.nvim_del_augroup_by_name, "cueline_buf_" .. buf)
 end

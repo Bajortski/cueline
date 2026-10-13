@@ -24,9 +24,16 @@ haven't saved yet.
 In `.ass`/`.ssa` files (Advanced SubStation Alpha) each `Dialogue:` line is
 one cue; `Comment:` lines are skipped. ASS lines often overlap, e.g. a sign
 on screen while people talk. Every line playing at the moment is highlighted,
-and following tracks the one that started most recently. The caption in IINA
-is the line's text without `{...}` override tags, so styling and positioning
-aren't shown yet.
+and following tracks the one that started most recently.
+
+IINA renders `.ass`/`.ssa` buffers itself, with libass, so styles, positioning
+and animations look as they will in the finished file. cueline writes the
+buffer, unsaved edits included, to a temp file and has IINA load it as a
+subtitle track, reloading it about 150 ms after you stop typing. While it's
+loaded that track is selected and subtitles are switched on; when you detach,
+disconnect or switch to an `.srt` buffer it's removed and your own subtitle
+track and visibility come back. The temp file is deleted then too. This is
+why the IINA plugin asks for file system access when installed.
 
 It needs the companion IINA plugin, installed from IINA → Settings → Plugins →
 Install from GitHub… with `Bajortski/cueline`. Restart IINA after installing.
@@ -61,10 +68,12 @@ Following pauses for |cueline-follow_idle_ms| after you move the cursor or
 type, and never happens in insert mode. While paused, moving the cursor
 previews the line under it in the player.
 
-The caption renders SRT formatting tags: `<b>`, `<i>`, `<u>`, `<s>` and
-`<font color="...">`. An ASS `{\anN}` tag moves it, e.g. `{\an8}` to the top
-centre; other `{\...}` blocks are hidden. Anything else in angle brackets is
-shown as written.
+For `.srt` files the caption is drawn by cueline. It renders SRT formatting
+tags: `<b>`, `<i>`, `<u>`, `<s>` and `<font color="...">`. An ASS `{\anN}` tag
+moves it, e.g. `{\an8}` to the top centre; other `{\...}` blocks are hidden.
+Anything else in angle brackets is shown as written. `.ass`/`.ssa` files are
+rendered by IINA (see |cueline-intro|), which always shows what's at the
+playback position, so moving the cursor while paused doesn't preview them.
 
 IINA opens audio-only files in music mode, which hides the caption. Use
 Video → Exit Music Mode in IINA. Everything else works regardless.
@@ -186,6 +195,7 @@ preview_on_cursor = true
                                                            *cueline-hide_subs*
 hide_subs = true
     Hide IINA's own subtitle track while cueline's caption is showing.
+    Doesn't apply to `.ass`/`.ssa` buffers, whose live track replaces it.
 
                                                            *cueline-lookahead*
 lookahead = 3
