@@ -46,8 +46,19 @@ local commands = {
   CuelineStatus = { function() print(vim.inspect(cl().status())) end, {} },
 }
 
+-- user commands must start with a capital, so the all-lowercase spellings
+-- (:cuelineopen) are abbreviations that expand only as the command name
+local function lower_alias(name)
+  local lower = name:lower()
+  vim.keymap.set("ca", lower, function()
+    local typed = vim.fn.getcmdtype() == ":" and vim.fn.getcmdline():match("^[%s:]*(%S+)$")
+    return typed == lower and name or lower
+  end, { expr = true, desc = ":" .. name })
+end
+
 for name, def in pairs(commands) do
   vim.api.nvim_create_user_command(name, def[1], def[2])
+  lower_alias(name)
 end
 
 -- subtitle filetypes cueline attaches to (cueline.buffer.formats has the
