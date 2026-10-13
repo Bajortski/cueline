@@ -12,6 +12,7 @@ CONTENTS                                                    *cueline-contents*
   7. Highlights .............................. |cueline-highlights|
   8. Lua API ................................. |cueline-api|
   9. Troubleshooting ......................... |cueline-troubleshooting|
+ 10. Exporting for YouTube ................... |cueline-export|
 
 ==============================================================================
 1. INTRODUCTION                                                *cueline-intro*
@@ -98,6 +99,10 @@ Video → Exit Music Mode in IINA. Everything else works regardless.
 :CuelineAttach                                                *:CuelineAttach*
 :CuelineDetach                                                *:CuelineDetach*
     Turn cueline on or off for the current buffer.
+
+:CuelineExport [output]                                       *:CuelineExport*
+    Convert the buffer to YouTube's styled timed-text format (`.ytt`), using
+    YTSubConverter. See |cueline-export|.
 
 :CuelineStatus                                                *:CuelineStatus*
     Show the connection and player state.
@@ -195,6 +200,14 @@ media_exts = { "m4a", "mp3", "wav", "flac", "ogg", "opus", "aac",
 media_dirs = { ".", "../audio", "../video", "../media" }
     Folders |:CuelineOpen| searches, relative to the transcript.
 
+                                                      *cueline-ytsubconverter*
+ytsubconverter = nil
+    Path to the YTSubConverter executable used by |:CuelineExport|. When
+    unset, cueline looks for `YTSubConverter` on your `PATH`, then for
+    `YTSubConverter.app` in `/Applications` and `~/Applications`. For an app
+    elsewhere, give the binary inside it: >lua
+      ytsubconverter = "~/bin/YTSubConverter.app/Contents/MacOS/YTSubConverter"
+<
                                                              *cueline-keymaps*
 keymaps = { seek = "<CR>", replay = "<localleader>r", ... }
     Keys by action name: `seek`, `replay`, `toggle_pause`, `follow`, `back`,
@@ -241,5 +254,44 @@ No caption in IINA ~
 
 The cursor doesn't follow ~
     See |cueline-follow_idle_ms|, and check |:CuelineStatus|.
+
+==============================================================================
+10. EXPORTING FOR YOUTUBE                                     *cueline-export*
+
+|:CuelineExport| converts an `.ass`, `.ssa` or `.srt` buffer to YouTube's
+styled timed-text format (`.ytt`, also called srv3), which keeps colours,
+positioning and karaoke that a plain `.srt` upload loses. Upload the result
+to YouTube Studio as a subtitle file.
+
+It converts what's in the buffer, unsaved edits included, and runs in the
+background. Without an argument, the output goes next to the buffer's file
+with a `.ytt` extension. An [output] path is relative to the current
+directory, and its extension picks the format: `.ytt`, `.srv3`, `.ass`,
+`.srt` or `.sbv`. If the conversion fails, an existing output file is left
+as it was.
+
+Install YTSubConverter ~
+    Download the macOS build from
+    https://github.com/arcusmaximus/YTSubConverter/releases and move
+    `YTSubConverter.app` to `/Applications`, or point |cueline-ytsubconverter|
+    at it. |:checkhealth| `cueline` reports whether it's found.
+
+    The app isn't notarized, so macOS may refuse to run a copy downloaded in a
+    browser. Clear the quarantine flag: >sh
+      xattr -d com.apple.quarantine /Applications/YTSubConverter.app
+<
+What survives ~
+    From styles: font, size, bold, italic, underline, colours, alignment,
+    and outline or shadow (on or off, not its width).
+
+    Override tags: `\b` `\i` `\u` `\fn` `\fs` `\c` `\1c`-`\4c` `\1a`-`\4a`
+    `\alpha` `\pos` `\an` `\k` `\r` `\fad` `\fade` `\move`, and `\t` for
+    colour, alpha and size only.
+
+    Not supported: `\fscx` `\fscy` `\frz` `\clip` `\blur`, `\bord` and
+    `\shad` widths, and `\p` drawings.
+
+    YouTube's mobile apps ignore background customisation, and the Android
+    app ignores font size.
 
  vim:tw=78:ts=8:ft=help:norl:

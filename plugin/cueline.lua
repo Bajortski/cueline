@@ -39,6 +39,10 @@ local commands = {
     function(o) cl().stamp(which_arg(o.fargs[1])) end,
     { nargs = 1, complete = function() return { "start", "end" } end },
   },
+  CuelineExport = {
+    function(o) require("cueline.export").export(0, o.args ~= "" and o.args or nil) end,
+    { nargs = "?", complete = "file" },
+  },
   CuelineStatus = { function() print(vim.inspect(cl().status())) end, {} },
 }
 
