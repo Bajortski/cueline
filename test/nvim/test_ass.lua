@@ -119,6 +119,40 @@ describe("ass formatting", function()
   end)
 end)
 
+describe("ass.normalize", function()
+  local head = { "[V4+ Styles]", "Format: Name, Fontsize", "Style: Dan,40", "", "[Events]" }
+  local function with(...)
+    local t = vim.list_extend({}, head)
+    return vim.list_extend(t, { ... })
+  end
+  it("expands a trimmed Format and fills the missing fields", function()
+    local out = ass.normalize(with(
+      "Format: Layer, Start, End, Style, Name, Text",
+      "Dialogue: 0,0:00:00.24,0:00:01.44,Dan,,So, so that's it.",
+      "Comment: 1,0:00:02.00,0:00:03.00,Default,Jeff,note"
+    ))
+    eq("Style: Dan,40", out[3], "styles untouched")
+    eq("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text", out[6])
+    eq("Dialogue: 0,0:00:00.24,0:00:01.44,Dan,,0,0,0,,So, so that's it.", out[7])
+    eq("Comment: 1,0:00:02.00,0:00:03.00,Default,Jeff,0,0,0,,note", out[8])
+  end)
+  it("fills Layer and Style when even those are left out", function()
+    local out = ass.normalize(with("Format: Start, End, Text", "Dialogue: 0:00:01.00,0:00:02.00,hi"))
+    eq("Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,hi", out[7])
+  end)
+  it("leaves standard files byte-identical", function()
+    eq(fixture, ass.normalize(fixture))
+  end)
+  it("the trimmed lines still parse as the same cues", function()
+    local trimmed = with("Format: Start, End, Style, Text", "Dialogue: 0:00:01.00,0:00:02.50,Dan,a, b")
+    local a, b = ass.parse(trimmed)[1], ass.parse(ass.normalize(trimmed))[1]
+    eq(a.start, b.start)
+    eq(a.stop, b.stop)
+    eq(a.style, b.style)
+    eq(a.raw, b.raw)
+  end)
+end)
+
 describe("overlapping cue lookups", function()
   local cues = ass.parse(fixture)
   it("lists every active cue in start order", function()

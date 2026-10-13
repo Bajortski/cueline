@@ -223,6 +223,72 @@ function M.parse(lines)
   return st.cues
 end
 
+-- Values for event fields a trimmed Format: line leaves out.
+local EVENT_DEFAULTS = { layer = "0", marked = "0", style = "Default", marginl = "0", marginr = "0", marginv = "0" }
+
+local function format_line(names)
+  local cased = {}
+  for k, name in ipairs(names) do
+    cased[k] = ({ marginl = "MarginL", marginr = "MarginR", marginv = "MarginV" })[name]
+      or (name:sub(1, 1):upper() .. name:sub(2))
+  end
+  return "Format: " .. table.concat(cased, ", ")
+end
+
+-- The standard field list for a file's events: SSA v4 files say Marked
+-- where V4+ says Layer.
+local function full_format(names)
+  local full = { unpack(DEFAULT_EVENT_FORMAT) }
+  if table.concat(names, ","):find("marked", 1, true) then
+    full[1] = "marked"
+  end
+  return full
+end
+
+-- An event line re-laid out from `names` into `full`, missing fields filled.
+local function expand_event(line, names, full)
+  local kind, _, pos = key_value(line)
+  local spans = (kind == "Dialogue" or kind == "Comment") and field_spans(line, pos, #names)
+  if not spans then
+    return line
+  end
+  local have = {}
+  for k, name in ipairs(names) do
+    have[name] = line:sub(spans[k][1], spans[k][2])
+  end
+  local out = {}
+  for k, name in ipairs(full) do
+    out[k] = have[name] or EVENT_DEFAULTS[name] or ""
+  end
+  return kind .. ": " .. table.concat(out, ",")
+end
+
+--- Lines with a trimmed [Events] Format: (e.g. without margins or Effect)
+-- expanded to the full standard one. ASS allows any field set, but mpv
+-- ignores the Style of such events and YTSubConverter rejects them, so
+-- files handed to either go through this. Unchanged when already full.
+function M.normalize(lines)
+  local out, names, full, in_events = {}, nil, nil, false
+  for i, line in ipairs(lines) do
+    local sect = header(line)
+    if sect then
+      in_events = sect == "events"
+    elseif in_events and key_value(line) == "Format" then
+      names = field_names(select(2, key_value(line)))
+      full = full_format(names)
+      if table.concat(names, ",") == table.concat(full, ",") then
+        names = nil -- already standard: leave the section as it is
+      else
+        line = format_line(full)
+      end
+    elseif names and in_events then
+      line = expand_event(line, names, full)
+    end
+    out[i] = line
+  end
+  return out
+end
+
 --- Rewrite the Start and End fields of a Dialogue line, leaving every other
 -- byte as it was. `script` is the parse result's script table (for the
 -- field order); the V4+ default order is assumed without it.

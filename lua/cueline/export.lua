@@ -92,7 +92,9 @@ local function prepare(buf, arg)
     tmp_out = dir .. "/output" .. (out_ext ~= "" and ("." .. out_ext) or ""),
     out = out,
   }
-  fn.writefile(api.nvim_buf_get_lines(buf, 0, -1, false), job.input)
+  local lines = api.nvim_buf_get_lines(buf, 0, -1, false)
+  -- YTSubConverter needs every standard event field
+  fn.writefile(ext == "srt" and lines or require("cueline.ass").normalize(lines), job.input)
   return job
 end
 

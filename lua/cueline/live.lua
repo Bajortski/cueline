@@ -40,7 +40,7 @@ end
 function M.write(buf)
   local path = M.path(buf)
   local tmp = path .. ".tmp"
-  if fn.writefile(api.nvim_buf_get_lines(buf, 0, -1, false), tmp) ~= 0 then
+  if fn.writefile(ass.normalize(api.nvim_buf_get_lines(buf, 0, -1, false)), tmp) ~= 0 then
     return nil
   end
   assert(uv.fs_rename(tmp, path))
