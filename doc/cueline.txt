@@ -36,6 +36,12 @@ disconnect or switch to an `.srt` buffer it's removed and your own subtitle
 track and visibility come back. The temp file is deleted then too. This is
 why the IINA plugin asks for file system access when installed.
 
+Files may leave unused fields out of the `[Events]` `Format:` line (e.g.
+`Format: Layer, Start, End, Style, Name, Text`). mpv ignores such lines'
+styles and YTSubConverter rejects them, so the copies cueline hands to IINA
+and to |:CuelineExport| have the standard fields restored. Opened directly in
+another player, a trimmed file loses its styles.
+
 It needs the companion IINA plugin, installed from IINA → Settings → Plugins →
 Install from GitHub… with `Bajortski/cueline`. Restart IINA after installing.
 

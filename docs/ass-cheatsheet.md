@@ -1,3 +1,7 @@
+---
+created: 2026-10-13T01:15
+updated: 2026-10-13T01:31
+---
 # ASS cheatsheet
 
 Quick reference for writing `.ass` by hand in cueline. Everything here renders
@@ -40,7 +44,7 @@ The `Format:` lines name the field order. Keep them exactly as above; every
 ## [Script Info]
 
 | Key | What | Notes |
-|---|---|---|
+|-------------------|-------------------------|-------|
 | `PlayResX`/`PlayResY` | Script coordinate space | Every `\pos`, `\move`, `\clip`, margin and `\fs` is in these units, scaled to the video. Match the video's aspect (1920x1080 for 16:9). Missing = 384x288, which squashes things on 16:9. YouTube maps `\pos` as a fraction of this too. |
 | `WrapStyle` | Default line wrapping | `0` smart, top line wider; `1` greedy end-of-line; `2` no wrap (only `\N` breaks, `\n` too); `3` smart, bottom line wider. Same values as `\q`. |
 | `ScaledBorderAndShadow` | Border/shadow units | `yes`: script pixels, scale with PlayRes (what you want). `no`: video pixels, so borders look thinner on a 4K video than a 720p one. |
@@ -87,22 +91,29 @@ Bool fields use `-1` = on, `0` = off.
 | `Effect` | Legacy `Banner;`/`Scroll up;` effects; usually empty | no. YTSubConverter reads `no_android_dark_text_hack` here (see caveats) |
 | `Text` | Text plus `{\override}` blocks | see tags |
 
+**Trimming fields.** You can drop fields you don't use from the `Format:` line
+(e.g. `Format: Layer, Start, End, Style, Name, Text`) and from every
+`Dialogue:` line to match. mpv/IINA then ignore each line's `Style`, and
+YTSubConverter refuses the file, so only do this if you preview and export
+through cueline, which expands the copy it hands to both. Leave `[V4+ Styles]`
+untrimmed.
+
 ## Colours
 
 Format is `&HAABBGGRR` in styles, `&HBBGGRR&` in `\c` tags, alpha separately as
 `&HAA&`. **Blue-green-red, backwards from HTML.** **Alpha `00` is opaque, `FF`
 is invisible**, the opposite of what you'd guess.
 
-| Want | Style field | Override |
-|---|---|---|
-| White | `&H00FFFFFF` | `\c&HFFFFFF&` |
-| Black | `&H00000000` | `\c&H000000&` |
-| Red (`#FF0000`) | `&H000000FF` | `\c&H0000FF&` |
-| Blue (`#0000FF`) | `&H00FF0000` | `\c&HFF0000&` |
-| Yellow (`#FFFF00`) | `&H0000FFFF` | `\c&H00FFFF&` |
-| Pink (`#FF66CC`) | `&H00CC66FF` | `\c&HCC66FF&` |
-| 50% black shadow | `&H80000000` | `\4c&H000000&\4a&H80&` |
-| Invisible | `&HFF......` | `\alpha&HFF&` |
+| Want               | Style field  | Override               |
+| ------------------ | ------------ | ---------------------- |
+| White              | `&H00FFFFFF` | `\c&HFFFFFF&`          |
+| Black              | `&H00000000` | `\c&H000000&`          |
+| Red (`#FF0000`)    | `&H000000FF` | `\c&H0000FF&`          |
+| Blue (`#0000FF`)   | `&H00FF0000` | `\c&HFF0000&`          |
+| Yellow (`#FFFF00`) | `&H0000FFFF` | `\c&H00FFFF&`          |
+| Pink (`#FF66CC`)   | `&H00CC66FF` | `\c&HCC66FF&`          |
+| 50% black shadow   | `&H80000000` | `\4c&H000000&\4a&H80&` |
+| Invisible          | `&HFF......` | `\alpha&HFF&`          |
 
 HTML `#RRGGBB` to ASS: swap first and last pairs, `RRGGBB` -> `BBGGRR`.
 
