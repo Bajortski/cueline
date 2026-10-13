@@ -27,6 +27,7 @@ local defaults = {
   seek_on_adjust = true, -- after moving a cue's start, seek there to hear it
   media_exts = { "m4a", "mp3", "wav", "flac", "ogg", "opus", "aac", "mp4", "mkv", "mov", "webm", "m4v" },
   media_dirs = { ".", "../audio", "../video", "../media" },
+  ytsubconverter = nil, -- path to YTSubConverter for :CuelineExport (nil: search PATH and /Applications)
   keymaps = {
     seek = "<CR>",
     replay = "<localleader>r",

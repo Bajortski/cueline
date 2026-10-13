@@ -47,6 +47,17 @@ local function check_iina()
   end
 end
 
+local function check_export()
+  local path, err = require("cueline.export").find(require("cueline").config.ytsubconverter)
+  if path then
+    vim.health.ok("YTSubConverter: " .. path)
+  else
+    vim.health.warn(err .. " (only needed for :CuelineExport)", {
+      "if macOS blocks it, run: xattr -d com.apple.quarantine /path/to/YTSubConverter.app",
+    })
+  end
+end
+
 local function check_connection()
   local cl = require("cueline")
   local st = cl.status()
@@ -88,6 +99,8 @@ function M.check()
   check_nvim()
   vim.health.start("cueline: IINA")
   check_iina()
+  vim.health.start("cueline: export")
+  check_export()
   vim.health.start("cueline: session")
   check_connection()
   check_buffers()

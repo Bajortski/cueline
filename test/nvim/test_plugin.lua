@@ -222,9 +222,9 @@ describe("health", function()
     vim.cmd("checkhealth cueline")
     -- newer Neovims fill the health buffer asynchronously
     local text = ""
-    wait(2000, function()
+    wait(5000, function()
       text = table.concat(api.nvim_buf_get_lines(0, 0, -1, false), "\n")
-      return text:find("cueline: environment", 1, true) ~= nil
+      return text:find("cueline: environment", 1, true) ~= nil and text:find("cueline: export", 1, true) ~= nil
     end, "health report")
     vim.cmd("bwipeout!")
   end)
