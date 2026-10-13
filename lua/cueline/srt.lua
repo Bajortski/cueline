@@ -4,6 +4,9 @@ local lookup = require("cueline.cues")
 
 local M = {}
 
+-- smallest timing step the format can store
+M.step = 0.001
+
 local TS = "(%d+):(%d%d):(%d%d)[,.](%d%d%d)"
 local ARROW = "^%s*" .. TS .. "%s*%-%->%s*" .. TS
 
@@ -81,6 +84,23 @@ end
 function M.replace_timing(line, start, stop)
   local rest = select(9, line:match(ARROW .. "(.*)$")) or ""
   return M.format_timing(start, stop) .. rest
+end
+
+local function is_text_line(line)
+  return line:find("%S") ~= nil and not M.parse_timing(line)
+end
+
+--- Apply an in-place edit of a cue's text lines (`lines`, same count as
+-- before). Returns true when the cue was updated, false when the edit
+-- touches its structure and needs a full reparse.
+function M.patch(_, cue, lines)
+  for _, l in ipairs(lines) do
+    if not is_text_line(l) then
+      return false
+    end
+  end
+  cue.text = table.concat(lines, "\n")
+  return true
 end
 
 -- Lookups live in cueline.cues; SRT puts the index number on the line

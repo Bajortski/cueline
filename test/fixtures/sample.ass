@@ -1,0 +1,20 @@
+[Script Info]
+; Script generated for cueline tests
+Title: cueline sample
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Helvetica,64,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,3,1,2,40,40,50,1
+Style: Sign,Helvetica,48,&H0000FFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,0,8,40,40,40,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.50,0:00:04.50,Default,Host,0,0,0,,Welcome back to the show\N(cue 1 second line)
+Dialogue: 0,0:00:05.50,0:00:09.50,Default,Host,0,0,0,,Tonight we roll for {\i1}initiative{\i0}
+Comment: 0,0:00:06.00,0:00:07.00,Default,,0,0,0,,timing note: check this one
+Dialogue: 1,0:00:05.00,0:00:15.00,Sign,,0,0,0,,{\pos(960,80)}THE TAVERN
+Dialogue: 0,0:00:10.50,0:00:14.50,Default,Guest,0,0,0,,Wait, who brought the dice?

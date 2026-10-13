@@ -1,4 +1,4 @@
-*cueline.txt*  Edit .srt transcripts against a live IINA player
+*cueline.txt*  Edit .srt and .ass transcripts against a live IINA player
 
 ==============================================================================
 CONTENTS                                                    *cueline-contents*
@@ -16,9 +16,17 @@ CONTENTS                                                    *cueline-contents*
 ==============================================================================
 1. INTRODUCTION                                                *cueline-intro*
 
-cueline links an `.srt` buffer to the IINA media player on macOS. The line
-being spoken is highlighted and kept in view as playback moves, and IINA shows
-it as a caption over the video, including edits you haven't saved yet.
+cueline links an `.srt` or `.ass`/`.ssa` buffer to the IINA media player on
+macOS. The line being spoken is highlighted and kept in view as playback
+moves, and IINA shows it as a caption over the video, including edits you
+haven't saved yet.
+
+In `.ass`/`.ssa` files (Advanced SubStation Alpha) each `Dialogue:` line is
+one cue; `Comment:` lines are skipped. ASS lines often overlap, e.g. a sign
+on screen while people talk. Every line playing at the moment is highlighted,
+and following tracks the one that started most recently. The caption in IINA
+is the line's text without `{...}` override tags, so styling and positioning
+aren't shown yet.
 
 It needs the companion IINA plugin, installed from IINA → Settings → Plugins →
 Install from GitHub… with `Bajortski/cueline`. Restart IINA after installing.
@@ -29,7 +37,7 @@ Install from GitHub… with `Bajortski/cueline`. Restart IINA after installing.
 With lazy.nvim: >lua
     {
       "Bajortski/cueline",
-      ft = "srt",
+      ft = { "srt", "ssa" },
       cmd = { "CuelineConnect", "CuelineOpen" },
       opts = {},
     }
@@ -42,7 +50,8 @@ Run |:checkhealth| `cueline` to check the setup.
 ==============================================================================
 3. USAGE                                                       *cueline-usage*
 
-1. Open an `.srt` file. cueline turns on for it automatically.
+1. Open an `.srt`, `.ass` or `.ssa` file. cueline turns on for it
+   automatically.
 2. Run |:CuelineOpen| to open the matching media in IINA and connect, or open
    the media in IINA yourself and run |:CuelineConnect|.
 3. Play. The playing line is highlighted and kept centred.
@@ -105,7 +114,9 @@ Video → Exit Music Mode in IINA. Everything else works regardless.
 ==============================================================================
 5. KEYS                                                         *cueline-keys*
 
-Set in `.srt` buffers only, in normal mode.
+Set in subtitle buffers only, in normal mode. In `.ass`/`.ssa` files they act
+on the `Dialogue:` line under the cursor; timing changes rewrite only its
+Start and End fields, rounded to hundredths of a second.
 
     <CR>               Jump the player to the line under the cursor
     <localleader>r     Play the line under the cursor from its start
@@ -142,11 +153,12 @@ reconnect = true
 
                                                          *cueline-auto_attach*
 auto_attach = true
-    Turn cueline on for every buffer with filetype `srt`.
+    Turn cueline on for every buffer with filetype `srt` or `ssa` (Neovim's
+    filetype for `.ass` and `.ssa` files).
 
                                                         *cueline-auto_connect*
 auto_connect = false
-    Connect as soon as the first `.srt` buffer is opened.
+    Connect as soon as the first subtitle buffer is opened.
 
                                                               *cueline-follow*
 follow = true
@@ -206,7 +218,8 @@ keymaps = { seek = "<CR>", replay = "<localleader>r", ... }
 7. HIGHLIGHTS                                             *cueline-highlights*
 
 CuelineActive                                          *hl-CuelineActive*
-    The playing line. Links to |hl-DiffChange| by default.
+    The playing line, or every playing line when they overlap. Links to
+    |hl-DiffChange| by default.
 
 CuelineSign                                              *hl-CuelineSign*
     The `▶` sign next to the playing line. Links to `DiagnosticInfo` by

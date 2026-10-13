@@ -22,7 +22,7 @@ directly from GitHub. The IINA plugin is shipped as a `.iinaplgz` release asset.
 Point your plugin manager at your checkout, e.g. with lazy.nvim:
 
 ```lua
-{ dir = "~/src/cueline", name = "cueline", ft = "srt", opts = {} }
+{ dir = "~/src/cueline", name = "cueline", ft = { "srt", "ssa" }, opts = {} }
 ```
 
 Link the IINA plugin in development mode, enable it, and restart IINA:
