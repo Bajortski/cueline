@@ -7,6 +7,10 @@
 - `.ass`/`.ssa` support: parsing, highlighting (including overlapping lines),
   following and retiming in Neovim, and a live preview through IINA's own
   libass renderer, unsaved edits included.
+- `.ass` files may trim unused event fields (margins, Effect) from their
+  `Format:` line; cueline restores them for IINA and the export, and fixes
+  Neovim's `ssa` syntax highlighting, which assumes all ten fields.
+- Every command also works typed in lowercase (`:cuelineopen`).
 - `:CuelineExport` converts a buffer to YouTube's styled `.ytt` format with
   YTSubConverter.
 - The IINA plugin now asks for file-system access, to load the `.ass` preview
