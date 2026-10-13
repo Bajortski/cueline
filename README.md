@@ -112,6 +112,10 @@ your own subtitle track back when you detach or disconnect. Overlapping lines
 (a sign and dialogue at once) are all highlighted; following tracks the one
 that started most recently.
 
+[`docs/ass-cheatsheet.md`](docs/ass-cheatsheet.md) has every ASS tag, style
+field and colour format on one page, with a column for what survives YouTube
+export.
+
 ### Exporting for YouTube
 
 YouTube ignores styling in `.srt`, `.vtt` and `.ttml` uploads. Its own

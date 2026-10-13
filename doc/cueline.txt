@@ -322,4 +322,7 @@ What survives ~
     YouTube's mobile apps ignore background customisation, and the Android
     app ignores font size.
 
+    `docs/ass-cheatsheet.md` in the plugin's repository lists every tag and
+    style field with what survives export.
+
  vim:tw=78:ts=8:ft=help:norl:
